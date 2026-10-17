@@ -67,7 +67,7 @@ else
                             </MudText>
                             @if (move.IsMine)
                             {
-                                @if (move.BestSan is not null && move.BestUci != move.Uci)
+                                @if (move.BestSan is not null && move.BestUci != move.Uci && move.AvgCpLoss >= NoticeableCp)
                                 {
                                     <MudAlert Severity="@(move.AvgCpLoss >= 50 ? Severity.Warning : Severity.Info)" Dense="true" Class="mb-2">
                                         The engine prefers <b>@move.BestSan</b> (green arrow). @move.San loses @Pawns(move.AvgCpLoss) on average@(move.Slips > 0 ? $", and lost a pawn or more in {move.Slips} of your games" : "").
@@ -75,7 +75,9 @@ else
                                 }
                                 else
                                 {
-                                    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-2">This is the engine's choice too.</MudAlert>
+                                    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-2">
+                                        @(move.BestUci == move.Uci ? "This is the engine's choice too." : $"A fine move: the engine's top choice is {move.BestSan}, but {move.San} is within a fraction of a pawn.")
+                                    </MudAlert>
                                 }
                             }
                             <div class="d-flex gap-2">
@@ -114,7 +116,7 @@ else
                                 <tr>
                                     <td>@MoveNumber(spot.Ply, true)</td>
                                     <td>@spot.Path</td>
-                                    <td>@spot.MistakeSan (@spot.MistakeCount×, −@Pawns(spot.MistakeAvgCpLoss) on average)</td>
+                                    <td>@spot.MistakeSan (@spot.MistakeCount×, loses @Pawns(spot.MistakeAvgCpLoss))</td>
                                     <td><b>@spot.BestSan</b></td>
                                     <td class="text-right">@spot.Slips of @spot.Reached</td>
                                     <td>@TallyText(spot)</td>
@@ -156,7 +158,7 @@ else
                                     }
                                     <MudText Typo="Typo.body2">The engine's choice is <b>@spot.BestSan</b> (green arrow).</MudText>
                                     <MudText Typo="Typo.body2" Class="mt-1">
-                                        In your games you went wrong here @spot.Slips of @spot.Reached times, most often with @spot.MistakeSan (@spot.MistakeCount×, losing @Pawns(spot.MistakeAvgCpLoss) on average).
+                                        In your games you went wrong here @spot.Slips of @spot.Reached times, most often with @spot.MistakeSan (@spot.MistakeCount×, losing @Pawns(spot.MistakeAvgCpLoss)).
                                     </MudText>
                                 </MudPaper>
                                 <div class="d-flex gap-2">
@@ -286,7 +288,12 @@ else
         return ply % 2 == 1 ? number + "." : standalone ? number + "..." : "";
     }
 
-    private static string Pawns(double cp) => (cp / 100.0).ToString("0.0", CultureInfo.InvariantCulture) + " pawns";
+    /// <summary>A loss below this (in centipawns) is not worth a warning: the move is as good as the engine's.</summary>
+    private const double NoticeableCp = 20;
+
+    /// <summary>Losses are capped at 1000 centipawns in the analysis, which means a lost game (mate or a queen and more).</summary>
+    private static string Pawns(double cp) =>
+        cp >= 900 ? "a decisive amount (mate or a queen or more)" : (cp / 100.0).ToString("0.0", CultureInfo.InvariantCulture) + " pawns";
 
     private static string Percent(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
 }
