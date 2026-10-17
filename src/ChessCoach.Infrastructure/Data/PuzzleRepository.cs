@@ -14,7 +14,7 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
     public async Task<IReadOnlyList<Puzzle>> LoadPoolAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
-        // Same ordering as the web dashboard: costliest blunder first, then most recent game.
+        // Most winning chances lost first (notes from before the swing field fall back to centipawn loss), then most recent game.
         var rows = await connection.QueryAsync<PoolRow>(new CommandDefinition(
             """
             SELECT n.game_id AS GameId, n.ply AS Ply, n.note AS Note,
@@ -23,7 +23,7 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
             FROM coach_notes n
             JOIN moves m ON m.game_id = n.game_id AND m.ply = n.ply
             JOIN games g ON g.id = n.game_id
-            ORDER BY m.cp_loss DESC, CAST(g.date AS TEXT) DESC, g.time DESC
+            ORDER BY json_extract(n.note, '$.swing') DESC, m.cp_loss DESC, CAST(g.date AS TEXT) DESC, g.time DESC
             """,
             cancellationToken: cancellationToken));
         return rows.Select(ToPuzzle).ToList();
@@ -101,10 +101,19 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
                 Why: note.Why ?? [],
                 BetterSan: note.Better ?? "",
                 BetterLine: note.BetterLine ?? "",
-                Tips: note.Tips ?? [],
+                Motif: MotifText(note),
+                Pattern: note.Pattern ?? "",
                 MaiaText: note.Maia?.Text ?? "",
                 EvalBefore: note.EvalBefore ?? "",
                 EvalAfter: note.EvalAfter ?? ""));
+    }
+
+    private static string MotifText(NoteJson note)
+    {
+        var label = note.Motif?.L;
+        if (string.IsNullOrEmpty(label)) return "";
+        if (note.Motif?.K is "hung_piece" or "moved_defender") return label;
+        return note.Side == "missed" ? $"Missed {char.ToLowerInvariant(label[0])}{label[1..]}" : $"{label} allowed";
     }
 
     private static string Format(DateTimeOffset value) => value.ToString("o", CultureInfo.InvariantCulture);
@@ -163,7 +172,11 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
         [JsonPropertyName("better_line")]
         public string? BetterLine { get; set; }
 
-        public List<string>? Tips { get; set; }
+        public string? Side { get; set; }
+
+        public MotifJson? Motif { get; set; }
+
+        public string? Pattern { get; set; }
 
         public MaiaJson? Maia { get; set; }
 
@@ -174,6 +187,13 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
         public string? EvalAfter { get; set; }
 
         public List<string>? Accept { get; set; }
+    }
+
+    private sealed class MotifJson
+    {
+        public string? K { get; set; }
+
+        public string? L { get; set; }
     }
 
     private sealed class MaiaJson

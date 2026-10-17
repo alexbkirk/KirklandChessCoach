@@ -67,20 +67,18 @@ else
                     }
                 </MudPaper>
 
-                <MudText Typo="Typo.subtitle1" Class="mt-2">@puzzle.Note.Headline</MudText>
+                @if (!string.IsNullOrEmpty(puzzle.Note.Motif))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-0 mt-2">@puzzle.Note.Motif</MudChip>
+                }
+                <MudText Typo="Typo.subtitle1" Class="mt-1">@puzzle.Note.Headline</MudText>
                 @foreach (var line in puzzle.Note.Why)
                 {
                     <MudText Typo="Typo.body2" Class="mb-1">@line</MudText>
                 }
-                @if (puzzle.Note.Tips.Count > 0)
+                @if (!string.IsNullOrEmpty(puzzle.Note.Pattern))
                 {
-                    <MudText Typo="Typo.subtitle2" Class="mt-2">Coaching tips</MudText>
-                    <ul class="puzzle-tips">
-                        @foreach (var tip in puzzle.Note.Tips)
-                        {
-                            <li>@tip</li>
-                        }
-                    </ul>
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">@puzzle.Note.Pattern</MudAlert>
                 }
                 @if (!string.IsNullOrWhiteSpace(puzzle.Note.MaiaText))
                 {
