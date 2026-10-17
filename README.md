@@ -26,3 +26,9 @@ The app migrates the database on startup (`src\ChessCoach.Infrastructure\Data\Mi
 | `src/ChessCoach.Infrastructure` | SQLite (Dapper), migrations, diagnostics |
 | `analysis/` | Python scripts for fetching, analysing and tagging games |
 | `tests/` | xUnit tests |
+
+## Licences
+
+- The app code is MIT-free for now; no licence has been chosen yet.
+- `src/ChessCoach.UI/wwwroot/lib/chessground` is **GPL-3.0-or-later** (chessground). Distributing the app means it must be GPL-3.0-or-later too.
+- `src/ChessCoach.UI/wwwroot/lib/chessjs` is BSD-2-Clause (chess.js).
