@@ -27,7 +27,17 @@ public static class OpeningVariationCalculator
             games.Count(g => g.Result == "loss"));
         var byGame = plies.GroupBy(p => p.GameId).ToDictionary(g => g.Key, g => g.OrderBy(p => p.Ply).ToList());
         var urls = games.ToDictionary(g => g.GameId, g => g.Url);
-        return new VariationReview(scope, record, UsualLine(byGame), Trouble(byGame, urls));
+        return new VariationReview(scope, record, UsualLine(byGame), Trouble(byGame, urls, mine: true));
+    }
+
+    /// <summary>
+    /// Trouble spots for one side: yours (<paramref name="mine"/> true) or your opponents' (false), from the given plies
+    /// (both sides' moves, so the path to each position can be written out).
+    /// </summary>
+    public static IReadOnlyList<TroubleSpot> TroubleSpots(IReadOnlyList<VariationPly> plies, IReadOnlyDictionary<string, string> urls, bool mine)
+    {
+        var byGame = plies.GroupBy(p => p.GameId).ToDictionary(g => g.Key, g => g.OrderBy(p => p.Ply).ToList());
+        return Trouble(byGame, urls, mine);
     }
 
     /// <summary>The position part of a FEN (pieces, side to move, castling, en passant): the same position in any game.</summary>
@@ -59,10 +69,10 @@ public static class OpeningVariationCalculator
         return line;
     }
 
-    private static List<TroubleSpot> Trouble(Dictionary<string, List<VariationPly>> byGame, Dictionary<string, string> urls)
+    private static List<TroubleSpot> Trouble(Dictionary<string, List<VariationPly>> byGame, IReadOnlyDictionary<string, string> urls, bool mine)
     {
-        var mine = byGame.Values.SelectMany(g => g).Where(p => p.IsMine).ToList();
-        return mine
+        var side = byGame.Values.SelectMany(g => g).Where(p => p.IsMine == mine).ToList();
+        return side
             .GroupBy(p => PositionKey(p.Fen))
             .Where(g => g.Any(p => p.CpLoss >= SlipCp) && (g.Count() >= 2 || g.First().Ply <= 2 * SingleSlipMaxMove))
             .Select(g =>

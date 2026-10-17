@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddSingleton<OpeningVariationService>();
         services.AddSingleton<IStatsRepository, StatsRepository>();
         services.AddSingleton<StatsService>();
+        services.AddSingleton<IOpponentRepository, OpponentRepository>();
+        services.AddSingleton<OpponentService>();
         // Windows only: the desktop host is Windows-only, and the Settings page needs this service.
         if (OperatingSystem.IsWindows())
         {

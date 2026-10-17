@@ -34,7 +34,7 @@ else
                 <ul class="focus-examples">
                     @foreach (var example in _focus.Examples)
                     {
-                        <li>@example.Date.ToString("yyyy-MM-dd") vs @example.Opponent, move @example.Move · <a href="@example.Url" target="_blank" rel="noopener">view game</a></li>
+                        <li>@example.Date.ToString("yyyy-MM-dd") vs <a href="@OpponentLinks.For(example.Opponent)">@example.Opponent</a>, move @example.Move · <a href="@example.Url" target="_blank" rel="noopener">view game</a></li>
                     }
                 </ul>
             }
