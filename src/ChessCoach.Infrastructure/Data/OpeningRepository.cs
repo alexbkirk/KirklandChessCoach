@@ -6,7 +6,11 @@ namespace ChessCoach.Infrastructure.Data;
 
 public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOpeningRepository
 {
-    /// <summary>Evaluations are stored from White's side; the report uses your side, clamped to +/-1000 centipawns.</summary>
+    /// <summary>
+    /// Evaluations are stored from White's side; the report uses your side, clamped to +/-1000 centipawns.
+    /// Your 10th move is ply 19 as White and ply 20 as Black. Looking it up by (game_id, ply) keeps the query fast:
+    /// filtering by ply number alone makes SQLite scan every move, which froze the UI for about a minute.
+    /// </summary>
     private const int EvalCap = 1000;
 
     public async Task<IReadOnlyList<OpeningGame>> LoadAsync(CancellationToken cancellationToken = default)
@@ -21,7 +25,8 @@ public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOp
                    (SELECT MIN((m.ply + 1) / 2) FROM moves m
                      WHERE m.game_id = g.id AND m.is_mine = 1 AND m.is_last = 0 AND m.ply <= 30 AND m.cp_loss >= 100) AS FirstSlipMove,
                    (SELECT m.eval_after FROM moves m
-                     WHERE m.game_id = g.id AND m.is_mine = 1 AND (m.ply + 1) / 2 = 10 LIMIT 1) AS EvalAt10White
+                     WHERE m.game_id = g.id AND m.is_mine = 1
+                       AND m.ply = CASE WHEN g.color = 'white' THEN 19 ELSE 20 END) AS EvalAt10White
             FROM games g
             """,
             cancellationToken: cancellationToken));
