@@ -42,7 +42,7 @@ else
     {
         try
         {
-            _summary = await Games.GetSummaryAsync();
+            _summary = await Task.Run(() => Games.GetSummaryAsync());
         }
         catch (Exception ex)
         {
