@@ -62,7 +62,7 @@ ChessCoach\
 │     ├─ Data\                   SqliteConnectionFactory, repositories, MigrationRunner, Migrations\*.sql
 │     ├─ Engines\                UciEngine, StockfishEngine, MaiaEngine
 │     └─ Pipeline\               PythonPipelineRunner (JSON-lines progress, cancellation)
-├─ analysis\                     refresh.py, analyze.py, tag_blunders.py, coach.py, parse_games.py, tagging.py
+├─ analysis\                     refresh.py, analyze.py, tag_blunders.py, coach.py, motifs.py, parse_games.py, tagging.py, tests/ (unittest)
 │  └─ requirements.txt           chess==1.11.2   (.venv\ is gitignored)
 ├─ scripts\
 │  ├─ setup.ps1                  creates analysis\.venv, checks engines and WebView2

@@ -1,0 +1,81 @@
+"""Tests for motifs.py. Run from the repo root: analysis\\.venv\\Scripts\\python -m unittest discover -s analysis/tests"""
+import os
+import sys
+import unittest
+
+import chess
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from motifs import blunder_motifs, detect  # noqa: E402
+
+
+def keys(fen, ucis, me=None):
+    board = chess.Board(fen)
+    line = [chess.Move.from_uci(u) for u in ucis]
+    return [m["k"] for m in detect(board, line, board.turn, board.turn if me is None else me)]
+
+
+class DetectTests(unittest.TestCase):
+    def test_knight_fork_of_king_and_rook(self):
+        found = detect(chess.Board("r3k3/8/8/3N4/8/8/8/4K3 w - - 0 1"),
+                       [chess.Move.from_uci(u) for u in ["d5c7", "e8d7", "c7a8"]], chess.WHITE, chess.BLACK)
+        self.assertEqual("fork", found[0]["k"])
+        self.assertEqual("Knight fork", found[0]["l"])
+        self.assertIn("Nc7+ hits your king on e8 and your rook on a8", found[0]["d"])
+
+    def test_back_rank_mate(self):
+        self.assertEqual("back_rank_mate", keys("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", ["a1a8"])[0])
+
+    def test_smothered_mate(self):
+        self.assertEqual("smothered_mate", keys("6rk/6pp/7N/8/8/8/8/6K1 w - - 0 1", ["h6f7"])[0])
+
+    def test_other_mates_are_a_mating_attack(self):
+        found = detect(chess.Board("7k/8/6K1/8/8/8/8/1Q6 w - - 0 1"), [chess.Move.from_uci("b1b8")], chess.WHITE, chess.WHITE)
+        self.assertEqual("mate", found[0]["k"])
+        self.assertEqual("Qb8# is mate", found[0]["d"])
+
+    def test_attacking_a_pinned_piece(self):
+        self.assertIn("pin", keys("4k3/8/2n5/1B6/3P4/8/8/4K3 w - - 0 1", ["d4d5", "e8e7", "d5c6"]))
+
+    def test_skewer_of_king_and_queen(self):
+        self.assertIn("skewer", keys("4k2q/8/8/8/8/8/8/R3K3 w - - 0 1", ["a1a8", "e8e7", "a8h8"]))
+
+    def test_discovered_check(self):
+        self.assertIn("discovered_check", keys("4k3/8/8/8/4N3/8/8/4R1K1 w - - 0 1", ["e4c3"]))
+
+    def test_double_check(self):
+        self.assertEqual("double_check", keys("4k3/8/8/8/4N3/8/8/4R1K1 w - - 0 1", ["e4f6"])[0])
+
+    def test_removing_the_defender(self):
+        self.assertIn("removing_the_defender", keys("7k/8/5n2/3r4/8/8/1B6/3R2K1 w - - 0 1", ["b2f6", "h8h7", "d1d5"]))
+
+    def test_free_piece(self):
+        self.assertEqual(["free_piece"], keys("4k3/8/8/3n4/8/8/8/3RK3 w - - 0 1", ["d1d5"]))
+
+    def test_promotion(self):
+        self.assertIn("promotion", keys("4k3/1P6/8/8/8/8/8/4K3 w - - 0 1", ["b7b8q"]))
+
+    def test_a_quiet_line_has_no_motif(self):
+        self.assertEqual([], keys(chess.STARTING_FEN, ["e2e4", "e7e5", "g1f3"]))
+
+    def test_an_illegal_line_is_ignored(self):
+        self.assertEqual([], keys(chess.STARTING_FEN, ["e2e5"]))
+
+
+class BlunderMotifTests(unittest.TestCase):
+    def test_hung_piece(self):
+        board = chess.Board("4k3/8/7p/8/8/8/8/2B1K3 w - - 0 1")
+        found = blunder_motifs(board, chess.Move.from_uci("c1g5"), chess.Move.from_uci("h6g5"), chess.WHITE)
+        self.assertEqual("hung_piece", found[0]["k"])
+        self.assertIn("your bishop on g5", found[0]["d"])
+
+    def test_moved_defender(self):
+        # the knight on d2 guards the bishop on e4; moving it lets the rook take
+        board = chess.Board("4r1k1/8/8/8/4B3/8/3N4/4K3 w - - 0 1")
+        found = blunder_motifs(board, chess.Move.from_uci("d2b3"), chess.Move.from_uci("e8e4"), chess.WHITE)
+        self.assertEqual("moved_defender", found[0]["k"])
+        self.assertIn("your knight on d2 was guarding your bishop on e4", found[0]["d"])
+
+
+if __name__ == "__main__":
+    unittest.main()

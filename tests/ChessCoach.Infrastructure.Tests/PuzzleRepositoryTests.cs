@@ -8,7 +8,8 @@ public sealed class PuzzleRepositoryTests
 {
     private const string NoteJsonText = """
         {"kind":"missed_capture","headline":"Bxd8 wins a queen.","why":["Your bishop was left en prise."],
-         "accept":["g5d8","e2e4"],"better":"Bxd8","better_line":"Bxd8 Nxc3","tips":["Scan for free pieces."],
+         "accept":["g5d8","e2e4"],"better":"Bxd8","better_line":"Bxd8 Nxc3","side":"missed","motif":{"k":"fork","l":"Knight fork"},
+         "pattern":"Missed knight forks: 4 of these 100 blunders.",
          "maia":{"level":1100,"text":"Most players find this."},"eval_before":"+7.7","eval_after":"-6.2"}
         """;
 
@@ -50,9 +51,26 @@ public sealed class PuzzleRepositoryTests
         Assert.Equal("Bxd8", pool[1].Note.BetterSan);
         Assert.Equal("Bxd8 Nxc3", pool[1].Note.BetterLine);
         Assert.Equal("Most players find this.", pool[1].Note.MaiaText);
-        Assert.Equal(["Scan for free pieces."], pool[1].Note.Tips);
+        Assert.Equal("Missed knight fork", pool[1].Note.Motif);
+        Assert.Equal("Missed knight forks: 4 of these 100 blunders.", pool[1].Note.Pattern);
         Assert.Equal("https://x/old", pool[1].Url);
         Assert.Equal("Alice", pool[1].Opponent);
+    }
+
+    [Fact]
+    public async Task Notes_with_a_swing_come_first_biggest_swing_first()
+    {
+        using var db = new TempDatabase();
+        await SeedAsync(db);
+        await AddNoteAsync(db, "new", 9, """{"headline":"h","why":[],"swing":40.5,"side":"allowed","motif":{"k":"hung_piece","l":"Hung piece"}}""");
+        await AddNoteAsync(db, "old", 17, """{"headline":"h","why":[],"swing":97.2,"side":"allowed","motif":{"k":"pin","l":"Pin"}}""");
+
+        var pool = await new PuzzleRepository(db.Connections).LoadPoolAsync();
+
+        Assert.Equal(["old_17", "new_9"], pool.Select(p => p.PositionId));
+        Assert.Equal("Pin allowed", pool[0].Note.Motif);
+        Assert.Equal("Hung piece", pool[1].Note.Motif);
+        Assert.Equal("", pool[1].Note.Pattern);
     }
 
     [Fact]
