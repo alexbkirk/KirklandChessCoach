@@ -486,7 +486,6 @@ $RECYCLE.BIN/
 .env.*
 *.key
 *api-key*
-secrets/
 appsettings.*.local.json
 analysis/.venv/
 *.db
