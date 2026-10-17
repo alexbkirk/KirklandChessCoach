@@ -1,0 +1,159 @@
+@inject DrillService Drill
+@inject ChessRules Rules
+
+<MudPaper Class="pa-3 drill-card" Outlined="true">
+    <div class="d-flex justify-space-between align-center mb-1">
+        <MudText Typo="Typo.subtitle1"><b>@(Slot.Index + 1). @Title</b></MudText>
+        @if (Slot.Done)
+        {
+            <MudChip T="string" Size="Size.Small" Color="@(DrillGrader.Passed(Slot) ? Color.Success : Color.Error)">@(DrillGrader.Passed(Slot) ? "passed" : "missed")</MudChip>
+        }
+    </div>
+
+    @if (_answers is null)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Class="mb-2">@((MarkupString)Prompt)</MudText>
+        <ChessBoard Fen="@BoardFen" Orientation="@Slot.Position.Color" LastMove="@(Slot.Format == DrillFormat.Hang ? Slot.Position.Uci : null)"
+                    Marks="@Marks" Selectable="@(!Slot.Done && Slot.Format != DrillFormat.Safe)" OnSquareClick="Toggle" />
+
+        @if (!Slot.Done)
+        {
+            <div class="d-flex gap-2 mt-2">
+                @if (Slot.Format == DrillFormat.Safe)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" OnClick="() => JudgeAsync(true)">Safe</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="() => JudgeAsync(false)">Blunder</MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => SubmitAsync(_selected.ToList())">Submit</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="() => SubmitAsync([])">@(Slot.Format == DrillFormat.Hang ? "Nothing hangs" : "None")</MudButton>
+                }
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">@((MarkupString)Result)</MudText>
+            <MudText Typo="Typo.caption"><a href="@Slot.Position.Url" target="_blank" rel="noopener">view game</a> · @Slot.Position.Date vs @Slot.Position.Opponent</MudText>
+        }
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public DrillSlot Slot { get; set; } = default!;
+
+    [Parameter, EditorRequired] public DateOnly Day { get; set; }
+
+    /// <summary>Raised after an answer is saved, so the panel can refresh today's progress.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private DrillAnswers? _answers;
+    private string? _answersFor;
+    private readonly HashSet<string> _selected = [];
+
+    private string Side => Slot.Position.Color == "white" ? "White" : "Black";
+
+    private string Title => Slot.Format switch
+    {
+        DrillFormat.Hang => "Blunder check",
+        DrillFormat.Cct => "Checks · captures · threats",
+        _ => "Safe or blunder?",
+    };
+
+    private string BoardFen => Slot.Format == DrillFormat.Hang ? _answers!.FenAfter : Slot.Position.Fen;
+
+    private string Prompt => Slot.Format switch
+    {
+        DrillFormat.Hang => $"You are {Side} and about to play <b>{Slot.Position.San}</b> (shown). Afterwards, which of <b>your pieces can be captured</b> for free, or lost to a cheaper piece? Click them, then Submit.",
+        DrillFormat.Cct when Slot.Done => $"Scan finished: <b>{Slot.Score} of 3</b> rounds right.",
+        DrillFormat.Cct => $"<b>Round {Slot.Round + 1} of 3 · {DrillGrader.CctRounds[Slot.Round]}.</b> You are {Side}. " + Slot.Round switch
+        {
+            0 => "Click every square one of your pieces can move to <b>with check</b>.",
+            1 => "Click every <b>enemy piece you can capture</b> right now.",
+            _ => "Click each of <b>your pieces the opponent is threatening</b>: attacked and undefended, or attacked by a cheaper piece.",
+        },
+        _ => $"You are {Side} and play <b>{Slot.Position.San}</b> (arrow). Is it safe, or a blunder?",
+    };
+
+    private string Result
+    {
+        get
+        {
+            var game = $"In your game the move was {Slot.Position.San} (eval {Eval(Slot.Position.EvalBefore)} → {Eval(Slot.Position.EvalAfter)}).";
+            var last = Slot.Answers.LastOrDefault();
+            return Slot.Format switch
+            {
+                DrillFormat.Safe when Slot.Position.IsBlunder => $"It was a <b>blunder</b>. Best was <b>{Slot.Position.BestSan}</b>. {game}",
+                DrillFormat.Safe => $"It was a <b>safe move</b>. {game}",
+                DrillFormat.Cct => "Rounds: " + string.Join(" · ", Slot.Answers.Select((a, i) => (a.Ok ? "✔ " : "✘ ") + DrillGrader.CctRounds[i])) + ". " + game,
+                _ => (last is { Ok: true } ? "Right. " : $"Missed: {List(last?.Missing)}. Wrongly marked: {List(last?.Extra)}. ") + game,
+            };
+        }
+    }
+
+    private IReadOnlyList<BoardMark> Marks
+    {
+        get
+        {
+            if (Slot.Format == DrillFormat.Safe)
+            {
+                return [new BoardMark(Slot.Position.Uci[..2], "yellow", Slot.Position.Uci[2..4])];
+            }
+
+            var last = Slot.Answers.LastOrDefault();
+            if (Slot.Done && last is not null)
+            {
+                return [.. last.Right.Select(s => new BoardMark(s, "green")), .. last.Missing.Select(s => new BoardMark(s, "yellow")), .. last.Extra.Select(s => new BoardMark(s, "red"))];
+            }
+
+            return _selected.Select(s => new BoardMark(s, "blue")).ToList();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_answersFor != Slot.Position.PositionId)
+        {
+            _answers = await Rules.DrillAnswersAsync(Slot.Position.Fen, Slot.Position.Uci);
+            _answersFor = Slot.Position.PositionId;
+            _selected.Clear();
+        }
+    }
+
+    private void Toggle(string square)
+    {
+        if (!_selected.Remove(square))
+        {
+            _selected.Add(square);
+        }
+    }
+
+    private async Task SubmitAsync(IReadOnlyCollection<string> selected)
+    {
+        if (_answers is null) return;
+        var expected = Slot.Format == DrillFormat.Hang
+            ? _answers.Hanging
+            : Slot.Round switch { 0 => _answers.Checks, 1 => _answers.Captures, _ => _answers.Threats };
+        await Drill.SubmitSquaresAsync(Day, Slot, selected, expected);
+        _selected.Clear();
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task JudgeAsync(bool choseSafe)
+    {
+        await Drill.JudgeAsync(Day, Slot, choseSafe);
+        await OnChanged.InvokeAsync();
+    }
+
+    private string Eval(int whiteCp)
+    {
+        var cp = Slot.Position.Color == "white" ? whiteCp : -whiteCp;
+        return cp >= 9000 ? "winning (mate)" : cp <= -9000 ? "losing (mated)" : (cp / 100.0).ToString("+0.0;-0.0;0.0", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string List(IReadOnlyList<string>? squares) => squares is { Count: > 0 } ? string.Join(", ", squares) : "none";
+}

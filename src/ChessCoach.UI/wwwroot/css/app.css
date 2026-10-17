@@ -19,3 +19,71 @@ html, body {
     color: #fff;
     margin-left: 0.5rem;
 }
+
+.puzzle-layout {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.puzzle-board {
+    flex: 0 1 520px;
+    min-width: 280px;
+}
+
+.puzzle-side {
+    flex: 1 1 320px;
+    min-width: 280px;
+}
+
+.puzzle-tips {
+    margin: 4px 0 0;
+    padding-left: 20px;
+}
+
+.drill-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.drill-card .chess-board {
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+}
+
+.focus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 900px) {
+    .focus-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.focus-examples {
+    margin: 4px 0 0;
+    padding-left: 20px;
+}
+
+.opening-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 1000px) {
+    .opening-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.focus-muted {
+    color: var(--mud-palette-text-secondary);
+    font-weight: 400;
+}

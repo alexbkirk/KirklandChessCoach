@@ -1,0 +1,86 @@
+@using ChessCoach.Core.Domain
+@inject WeeklyFocusService Focus
+
+<div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+    <MudText Typo="Typo.h6">Your focus</MudText>
+    @if (_focus is not null)
+    {
+        <MudText Typo="Typo.caption">based on @_focus.GameCount games from @_focus.Window</MudText>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_focus is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_focus.TopKey is null)
+{
+    <MudAlert Severity="Severity.Info">No blunders from balanced positions in this window. Nothing to focus on yet.</MudAlert>
+}
+else
+{
+    <div class="focus-grid">
+        <div>
+            <MudText Typo="Typo.subtitle1"><b>@_focus.Title</b></MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">@_focus.Description</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2"><b>What to do.</b> @_focus.Advice</MudText>
+            @if (_focus.Examples.Count > 0)
+            {
+                <MudText Typo="Typo.caption">Recent examples</MudText>
+                <ul class="focus-examples">
+                    @foreach (var example in _focus.Examples)
+                    {
+                        <li>@example.Date.ToString("yyyy-MM-dd") vs @example.Opponent, move @example.Move · <a href="@example.Url" target="_blank" rel="noopener">view game</a></li>
+                    }
+                </ul>
+            }
+        </div>
+        <div>
+            <MudSimpleTable Dense="true">
+                <thead>
+                    <tr><th>Leak</th><th class="text-right">Blunders</th><th>Against your usual</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var stat in _focus.Stats)
+                    {
+                        <tr style="@(stat.Key == _focus.TopKey ? "font-weight:600" : "")">
+                            <td>@stat.Label</td>
+                            <td class="text-right">@stat.Count</td>
+                            <td>@DeltaText(stat.DeltaPercent)</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.caption" Class="mt-1">A blunder can have several tags. Positional slips are shown but never chosen as the focus.</MudText>
+        </div>
+    </div>
+}
+
+@code {
+    private WeeklyFocus? _focus;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _focus = await Focus.GetAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string DeltaText(double? delta) => delta switch
+    {
+        null => "no history yet",
+        var d when Math.Abs(d.Value) < 5 => "about usual",
+        var d when d.Value > 0 => $"up {d.Value:0}% on your usual",
+        var d => $"down {-d.Value:0}% on your usual",
+    };
+}

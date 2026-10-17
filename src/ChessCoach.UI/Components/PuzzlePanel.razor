@@ -1,0 +1,177 @@
+@using ChessCoach.Core.Domain
+@using ChessCoach.Core.Training
+@inject PuzzleService Puzzles
+
+<div class="d-flex align-center justify-space-between mb-2">
+    <MudText Typo="Typo.h6">Find the best move</MudText>
+    @if (_set is { Count: > 0 })
+    {
+        <MudText Typo="Typo.caption">Puzzle @(_index + 1) of @_set.Count</MudText>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_set is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_set.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No coached blunders in the database yet. Run the analysis first.</MudAlert>
+}
+else
+{
+    var puzzle = _set[_index];
+    var ui = _ui[_index];
+    <MudText Typo="Typo.body2" Class="mb-2">
+        @(puzzle.Color == "white" ? "White" : "Black") to move · @puzzle.Date vs @puzzle.Opponent ·
+        <a href="@puzzle.Url" target="_blank" rel="noopener">view game</a>
+    </MudText>
+
+    <div class="puzzle-layout">
+        <div class="puzzle-board">
+            <ChessBoard @ref="_board" Fen="@puzzle.Fen" MovableColor="@(ui.Answered ? null : puzzle.Color)" Orientation="@puzzle.Color" OnMove="HandleMoveAsync" />
+        </div>
+
+        <div class="puzzle-side">
+            @if (!ui.Answered)
+            {
+                <MudText Typo="Typo.body1" Class="mb-3">Click a piece, then the square it should go to.</MudText>
+                @if (ui.HintShown)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-3">Hint: the best move moves the piece on @puzzle.BestUci[..2].</MudAlert>
+                }
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Outlined" OnClick="() => ShowHint(ui)">Hint</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="() => GiveUpAsync(puzzle, ui)">Show answer</MudButton>
+                </div>
+            }
+            else
+            {
+                <MudPaper Class="pa-3 mb-3" Style="@(ui.Correct ? "background:rgba(46,139,87,.18)" : "background:rgba(200,85,61,.18)")">
+                    <MudText Typo="Typo.h6">@(ui.Correct ? "Correct" : ui.GaveUp ? "Answer shown" : "Not quite")</MudText>
+                    @if (ui.Correct)
+                    {
+                        <MudText Typo="Typo.body2">@ui.PlayedSan is one of the best moves here.</MudText>
+                    }
+                    else
+                    {
+                        @if (!ui.GaveUp)
+                        {
+                            <MudText Typo="Typo.body2">You played @ui.PlayedSan.</MudText>
+                        }
+                        <MudText Typo="Typo.body2">The best move was <b>@puzzle.Note.BetterSan</b> (@puzzle.Note.BetterLine).</MudText>
+                    }
+                </MudPaper>
+
+                <MudText Typo="Typo.subtitle1" Class="mt-2">@puzzle.Note.Headline</MudText>
+                @foreach (var line in puzzle.Note.Why)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-1">@line</MudText>
+                }
+                @if (puzzle.Note.Tips.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-2">Coaching tips</MudText>
+                    <ul class="puzzle-tips">
+                        @foreach (var tip in puzzle.Note.Tips)
+                        {
+                            <li>@tip</li>
+                        }
+                    </ul>
+                }
+                @if (!string.IsNullOrWhiteSpace(puzzle.Note.MaiaText))
+                {
+                    <MudText Typo="Typo.caption" Class="mt-2">@puzzle.Note.MaiaText</MudText>
+                }
+                <MudText Typo="Typo.caption" Class="mt-2">In the game you played @puzzle.PlayedSan (eval @puzzle.Note.EvalBefore → @puzzle.Note.EvalAfter).</MudText>
+
+                <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync">
+                    @(_index + 1 < _set.Count ? "Next puzzle" : "Next 5 puzzles")
+                </MudButton>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private ChessBoard? _board;
+    private List<Puzzle>? _set;
+    private List<PuzzleUi> _ui = [];
+    private int _index;
+    private string? _error;
+
+    private sealed class PuzzleUi
+    {
+        public bool Answered { get; set; }
+
+        public bool Correct { get; set; }
+
+        public bool GaveUp { get; set; }
+
+        public bool HintShown { get; set; }
+
+        public string PlayedSan { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadSetAsync();
+
+    private async Task LoadSetAsync()
+    {
+        try
+        {
+            _set = (await Puzzles.NextSetAsync()).ToList();
+            _ui = _set.Select(_ => new PuzzleUi()).ToList();
+            _index = 0;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task HandleMoveAsync(BoardMove move)
+    {
+        if (_set is null) return;
+        var puzzle = _set[_index];
+        var ui = _ui[_index];
+        if (ui.Answered) return;
+
+        ui.Correct = await Puzzles.AnswerAsync(puzzle, move.Uci, gaveUp: false, hintUsed: ui.HintShown);
+        ui.PlayedSan = move.San;
+        ui.Answered = true;
+        await ResetBoardAsync();
+    }
+
+    private async Task GiveUpAsync(Puzzle puzzle, PuzzleUi ui)
+    {
+        if (ui.Answered) return;
+        await Puzzles.AnswerAsync(puzzle, null, gaveUp: true, hintUsed: ui.HintShown);
+        ui.Answered = true;
+        ui.GaveUp = true;
+        await ResetBoardAsync();
+    }
+
+    private static void ShowHint(PuzzleUi ui) => ui.HintShown = true;
+
+    private async Task NextAsync()
+    {
+        if (_set is null) return;
+        if (_index + 1 < _set.Count)
+        {
+            _index++;
+        }
+        else
+        {
+            await LoadSetAsync();
+        }
+    }
+
+    /// <summary>After an answer the board shows the puzzle position again, with no further moves allowed.</summary>
+    private async Task ResetBoardAsync()
+    {
+        if (_board is not null) await _board.ResetAsync();
+    }
+}

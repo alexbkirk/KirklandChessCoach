@@ -1,0 +1,90 @@
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div @ref="_element" class="chess-board cg-wrap"></div>
+
+@code {
+    private ElementReference _element;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _board;
+    private DotNetObjectReference<ChessBoard>? _self;
+    private bool _ready;
+
+    /// <summary>FEN of the position to show.</summary>
+    [Parameter, EditorRequired] public string Fen { get; set; } = "";
+
+    /// <summary>Colour the user may move: "white" or "black". Null means no piece can be moved.</summary>
+    [Parameter] public string? MovableColor { get; set; }
+
+    [Parameter] public string Orientation { get; set; } = "white";
+
+    /// <summary>A move to highlight as the last one played (UCI), or null.</summary>
+    [Parameter] public string? LastMove { get; set; }
+
+    /// <summary>Circles or arrows drawn on the board.</summary>
+    [Parameter] public IReadOnlyList<BoardMark>? Marks { get; set; }
+
+    /// <summary>When true, clicking a square raises <see cref="OnSquareClick"/>.</summary>
+    [Parameter] public bool Selectable { get; set; }
+
+    /// <summary>Raised when the user completes a legal move, with its UCI (e.g. "e2e4") and SAN (e.g. "Nf3").</summary>
+    [Parameter] public EventCallback<BoardMove> OnMove { get; set; }
+
+    /// <summary>Raised with the square name (e.g. "e4") when <see cref="Selectable"/> is true and a square is clicked.</summary>
+    [Parameter] public EventCallback<string> OnSquareClick { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/ChessCoach.UI/js/board-interop.js");
+        _self = DotNetObjectReference.Create(this);
+        _board = await _module.InvokeAsync<IJSObjectReference>("create", _element, _self, Options());
+        _ready = true;
+    }
+
+    protected override Task OnParametersSetAsync() => ResetAsync();
+
+    /// <summary>Redraws the board from the parameters, undoing any move the user made on screen.</summary>
+    public async Task ResetAsync()
+    {
+        if (_ready && _board is not null)
+        {
+            await _board.InvokeVoidAsync("update", Options());
+        }
+    }
+
+    private object Options() => new
+    {
+        fen = Fen,
+        orientation = Orientation,
+        movableColor = MovableColor,
+        lastMove = LastMove,
+        marks = Marks ?? [],
+        selectable = Selectable,
+    };
+
+    [JSInvokable("OnMove")]
+    public async Task HandleMove(string uci, string san)
+    {
+        if (OnMove.HasDelegate) await OnMove.InvokeAsync(new BoardMove(uci, san));
+    }
+
+    [JSInvokable("OnSquare")]
+    public async Task HandleSquare(string square)
+    {
+        if (OnSquareClick.HasDelegate) await OnSquareClick.InvokeAsync(square);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_board is not null)
+        {
+            await _board.InvokeVoidAsync("destroy");
+            await _board.DisposeAsync();
+        }
+
+        if (_module is not null) await _module.DisposeAsync();
+        _self?.Dispose();
+    }
+}
