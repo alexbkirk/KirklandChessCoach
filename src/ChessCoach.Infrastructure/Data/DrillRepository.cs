@@ -31,7 +31,8 @@ public sealed class DrillRepository(SqliteConnectionFactory connections) : IDril
     private const string PositionColumns = """
         SELECT m.game_id AS GameId, m.ply AS Ply, m.fen_before AS Fen, m.color AS Color, m.uci AS Uci, m.san AS San,
                m.best_san AS BestSan, m.cp_loss AS CpLoss, m.eval_before AS EvalBefore, m.eval_after AS EvalAfter,
-               m.class AS Class, CAST(g.date AS TEXT) AS Date, g.opponent AS Opponent, g.url AS Url
+               m.class AS Class, CAST(g.date AS TEXT) AS Date, g.opponent AS Opponent, g.url AS Url,
+               (SELECT n.note FROM blunder_notes n WHERE n.game_id = m.game_id AND n.ply = m.ply) AS Note
         """;
 
     public async Task<(int Blunders, int Safe)> CountCandidatesAsync(CancellationToken cancellationToken = default)
@@ -199,8 +200,11 @@ public sealed class DrillRepository(SqliteConnectionFactory connections) : IDril
 
         public string Url { get; set; } = "";
 
+        public string? Note { get; set; }
+
         public DrillPosition ToPosition() => new(
             $"{GameId}_{Ply}", Fen, Color, Uci, San, BestSan ?? "", CpLoss, EvalBefore, EvalAfter,
-            IsBlunder: Class == "blunder", Date, Opponent, Url);
+            IsBlunder: Class == "blunder", Date, Opponent, Url,
+            Note: Note is null ? null : NoteJson.Parse(Note)?.ToCoachNote());
     }
 }

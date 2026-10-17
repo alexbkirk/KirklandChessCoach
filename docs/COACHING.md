@@ -1,6 +1,9 @@
 # Coach notes
 
-How `analysis/coach.py` chooses blunders and explains them. The app shows each note on the puzzle card.
+How the app explains blunders. Two scripts share the explanation code in `analysis/explain.py`:
+
+- `analysis/coach.py` picks the 100 costliest blunders for the puzzle cards (table `coach_notes`).
+- `analysis/explain_blunders.py` explains every blunder in the daily drill's pool (table `blunder_notes`). It runs at depth 12, is resumable, and `refresh.py` runs it after tagging new blunders. The drill shows the note once a card is answered.
 
 ## Why this changed
 
@@ -41,16 +44,20 @@ Candidates are ranked by that drop, largest first, then by most recent game. Eac
 
 Apart from mates and checks, a motif counts only if the line wins at least 2 points of material.
 
-Two more checks use the blunder itself:
+Four more checks use the blunder itself, when the opponent's reply takes a piece of yours worth 3+ and wins material:
 
-- `moved_defender`: the piece you moved was guarding the square your opponent then captures on.
-- `hung_piece`: the opponent simply takes the piece you just moved.
+- `hung_piece`: the reply takes the piece you just moved.
+- `moved_defender`: the piece you moved was guarding the piece the reply takes.
+- `ignored_threat`: the piece the reply takes was already attacked by that same enemy piece before your move, and you left it there.
+- `lost_piece`: any other piece your move left to be taken.
 
 ## The note
 
+Both kinds of note share the headline and facts below. Coach notes also have the pattern and Maia lines.
+
 - **Headline.** What the move allowed, named and concrete: "Bd3 allows a knight fork: Nc7+ hits your king on e8 and your rook on a8." If the move allowed nothing nameable, the headline is what you missed instead.
 - **Facts**, each only when it applies:
-  - whether the threat was already on the board before your move (checked with a null move at depth 12) or your move created it;
+  - whether the threat was already on the board before your move (checked with a null move at depth 12) or your move created it. The line is left out for a hung piece (the move itself created the threat) and an ignored threat (its headline already says so);
   - what you missed, if the best move was a tactic;
   - winning chances before and after;
   - how long you spent on the move, against your usual time for that stage of the game.

@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
 using Dapper;
@@ -9,8 +7,6 @@ namespace ChessCoach.Infrastructure.Data;
 
 public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuzzleRepository
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-
     public async Task<IReadOnlyList<Puzzle>> LoadPoolAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
@@ -81,7 +77,7 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
 
     private static Puzzle ToPuzzle(PoolRow row)
     {
-        var note = JsonSerializer.Deserialize<NoteJson>(row.Note, JsonOptions)
+        var note = NoteJson.Parse(row.Note)
             ?? throw new InvalidDataException($"Coach note for {row.GameId} ply {row.Ply} is empty.");
         return new Puzzle(
             PositionId: $"{row.GameId}_{row.Ply}",
@@ -96,24 +92,7 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
             Date: row.Date,
             Opponent: row.Opponent,
             Url: row.Url,
-            Note: new CoachNote(
-                Headline: note.Headline ?? "",
-                Why: note.Why ?? [],
-                BetterSan: note.Better ?? "",
-                BetterLine: note.BetterLine ?? "",
-                Motif: MotifText(note),
-                Pattern: note.Pattern ?? "",
-                MaiaText: note.Maia?.Text ?? "",
-                EvalBefore: note.EvalBefore ?? "",
-                EvalAfter: note.EvalAfter ?? ""));
-    }
-
-    private static string MotifText(NoteJson note)
-    {
-        var label = note.Motif?.L;
-        if (string.IsNullOrEmpty(label)) return "";
-        if (note.Motif?.K is "hung_piece" or "moved_defender") return label;
-        return note.Side == "missed" ? $"Missed {char.ToLowerInvariant(label[0])}{label[1..]}" : $"{label} allowed";
+            Note: note.ToCoachNote());
     }
 
     private static string Format(DateTimeOffset value) => value.ToString("o", CultureInfo.InvariantCulture);
@@ -158,46 +137,5 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
         public int Correct { get; set; }
 
         public string? LastSeenUtc { get; set; }
-    }
-
-    /// <summary>The subset of analysis/coach.py's note JSON that the app uses.</summary>
-    private sealed class NoteJson
-    {
-        public string? Headline { get; set; }
-
-        public List<string>? Why { get; set; }
-
-        public string? Better { get; set; }
-
-        [JsonPropertyName("better_line")]
-        public string? BetterLine { get; set; }
-
-        public string? Side { get; set; }
-
-        public MotifJson? Motif { get; set; }
-
-        public string? Pattern { get; set; }
-
-        public MaiaJson? Maia { get; set; }
-
-        [JsonPropertyName("eval_before")]
-        public string? EvalBefore { get; set; }
-
-        [JsonPropertyName("eval_after")]
-        public string? EvalAfter { get; set; }
-
-        public List<string>? Accept { get; set; }
-    }
-
-    private sealed class MotifJson
-    {
-        public string? K { get; set; }
-
-        public string? L { get; set; }
-    }
-
-    private sealed class MaiaJson
-    {
-        public string? Text { get; set; }
     }
 }

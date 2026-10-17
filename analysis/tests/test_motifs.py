@@ -76,6 +76,25 @@ class BlunderMotifTests(unittest.TestCase):
         self.assertEqual("moved_defender", found[0]["k"])
         self.assertIn("your knight on d2 was guarding your bishop on e4", found[0]["d"])
 
+    def test_ignored_threat(self):
+        # Black's queen on c6 is attacked by the knight on a5; Black plays ...Bb4+ and the knight takes the queen.
+        board = chess.Board("4kb1r/3b2pp/p1q5/Nr1np3/3pN3/3P1PP1/1P1Q3P/R1B1KB1R b Kk - 1 28")
+        found = blunder_motifs(board, chess.Move.from_uci("f8b4"), chess.Move.from_uci("a5c6"), chess.BLACK)
+        self.assertEqual("ignored_threat", found[0]["k"])
+        self.assertEqual("your queen on c6 was already attacked by their knight on a5, and Nxc6 takes it", found[0]["d"])
+
+    def test_lost_piece_when_the_move_exposes_another_piece(self):
+        # The white bishop on d3 shields the knight on d2 from the rook on d8; moving it away lets Rxd2 win the knight.
+        board = chess.Board("3rk3/8/8/8/8/3B4/3N4/7K w - - 0 1")
+        found = blunder_motifs(board, chess.Move.from_uci("d3a6"), chess.Move.from_uci("d8d2"), chess.WHITE)
+        self.assertEqual(["lost_piece"], [m["k"] for m in found])
+        self.assertEqual("Rxd2 takes your knight on d2", found[0]["d"])
+
+    def test_an_even_trade_is_not_a_lost_piece(self):
+        # Rxd2 is answered by Kxd2: the knight was defended by the king, and a rook took it, so nothing was lost cheaply.
+        board = chess.Board("3rk3/8/8/8/8/3B4/3N4/3K4 w - - 0 1")
+        self.assertEqual([], blunder_motifs(board, chess.Move.from_uci("d3a6"), chess.Move.from_uci("d8d2"), chess.WHITE))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,6 +38,24 @@
         else
         {
             <MudText Typo="Typo.body2" Class="mt-2">@((MarkupString)Result)</MudText>
+            @if (Slot.Position.Note is { } note)
+            {
+                <div class="drill-note mt-2">
+                    @if (!string.IsNullOrEmpty(note.Motif))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-0">@note.Motif</MudChip>
+                    }
+                    <MudText Typo="Typo.body2"><b>@note.Headline</b></MudText>
+                    @foreach (var line in note.Why)
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-1">@line</MudText>
+                    }
+                    @if (!string.IsNullOrEmpty(note.BetterSan))
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-1">Better was <b>@note.BetterSan</b> (@note.BetterLine).</MudText>
+                    }
+                </div>
+            }
             <MudText Typo="Typo.caption"><a href="@Slot.Position.Url" target="_blank" rel="noopener">view game</a> · @Slot.Position.Date vs @Slot.Position.Opponent</MudText>
         }
     }
@@ -87,6 +105,7 @@
             var last = Slot.Answers.LastOrDefault();
             return Slot.Format switch
             {
+                DrillFormat.Safe when Slot.Position.IsBlunder && Slot.Position.Note is not null => $"It was a <b>blunder</b>. {game}",
                 DrillFormat.Safe when Slot.Position.IsBlunder => $"It was a <b>blunder</b>. Best was <b>{Slot.Position.BestSan}</b>. {game}",
                 DrillFormat.Safe => $"It was a <b>safe move</b>. {game}",
                 DrillFormat.Cct => "Rounds: " + string.Join(" · ", Slot.Answers.Select((a, i) => (a.Ok ? "✔ " : "✘ ") + DrillGrader.CctRounds[i])) + ". " + game,

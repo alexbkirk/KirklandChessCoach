@@ -44,6 +44,33 @@ public sealed class DrillRepositoryTests
     }
 
     [Fact]
+    public async Task A_blunder_carries_its_note_and_a_position_without_one_has_none()
+    {
+        using var db = new TempDatabase();
+        await SeedAsync(db);
+        await db.ExecuteAsync(
+            """
+            INSERT INTO blunder_notes(game_id, ply, note) VALUES ('g1', 13,
+              '{"side":"allowed","motif":{"k":"fork","l":"Knight fork"},"headline":"Qh5 allows a knight fork.","why":["Winning chances: 52% before, 8% after."],"better":"Nc3","better_line":"Nc3 Nf6"}');
+            """);
+        var repo = new DrillRepository(db.Connections);
+
+        var blunder = await repo.GetCandidateAsync(blunder: true, 0);
+        var sound = await repo.GetCandidateAsync(blunder: false, 0);
+
+        var note = blunder!.Note!;
+        Assert.Equal("Qh5 allows a knight fork.", note.Headline);
+        Assert.Equal("Knight fork allowed", note.Motif);
+        Assert.Equal(["Winning chances: 52% before, 8% after."], note.Why);
+        Assert.Equal("Nc3", note.BetterSan);
+        Assert.Equal("Nc3 Nf6", note.BetterLine);
+        Assert.Null(sound!.Note);
+
+        await repo.SaveNewDayAsync(Day, 1, [new DrillSlot { Index = 0, Format = DrillFormat.Safe, Position = blunder }]);
+        Assert.Equal("Qh5 allows a knight fork.", (await repo.LoadDayAsync(Day))!.Single().Position.Note!.Headline);
+    }
+
+    [Fact]
     public async Task A_day_round_trips_with_slot_state_and_completed_days_need_every_slot_done()
     {
         using var db = new TempDatabase();
