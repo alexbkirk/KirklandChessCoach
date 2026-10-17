@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddSingleton<OpeningReportService>();
         services.AddSingleton<IStatsRepository, StatsRepository>();
         services.AddSingleton<StatsService>();
+        // Windows only: the desktop host is Windows-only, and the Settings page needs this service.
         if (OperatingSystem.IsWindows()) services.AddSingleton<IApiKeyStore, DpapiApiKeyStore>();
         return services;
     }

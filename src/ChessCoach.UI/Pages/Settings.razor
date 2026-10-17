@@ -80,8 +80,16 @@ else
 
     private async Task LoadKeyAsync()
     {
-        var key = await ApiKeys.GetAsync();
-        _keyEnding = key is null ? null : key.Length <= 4 ? key : key[^4..];
+        try
+        {
+            var key = await ApiKeys.GetAsync();
+            _keyEnding = key is null ? null : key.Length <= 4 ? key : key[^4..];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _keyEnding = null;
+            _keyMessage = $"Could not read the saved key: {ex.Message}";
+        }
     }
 
     private async Task SaveKeyAsync()
@@ -94,7 +102,7 @@ else
             _keyMessage = "Saved.";
             await LoadKeyAsync();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or ArgumentException)
         {
             _keyMessage = $"Could not save the key: {ex.Message}";
         }
@@ -102,8 +110,16 @@ else
 
     private async Task RemoveKeyAsync()
     {
-        await ApiKeys.RemoveAsync();
-        _keyMessage = "Key removed.";
+        try
+        {
+            await ApiKeys.RemoveAsync();
+            _keyMessage = "Key removed.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _keyMessage = $"Could not remove the key: {ex.Message}";
+        }
+
         await LoadKeyAsync();
     }
 

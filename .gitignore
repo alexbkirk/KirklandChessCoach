@@ -483,9 +483,9 @@ $RECYCLE.BIN/
 
 # ChessCoach
 # Secrets never belong in the repository (the app keeps its API key in %LOCALAPPDATA%\ChessCoach).
+# Keep these narrow: broad patterns can hide real source files.
 .env.*
-*.key
-*api-key*
+anthropic-api-key.bin
 appsettings.*.local.json
 analysis/.venv/
 *.db

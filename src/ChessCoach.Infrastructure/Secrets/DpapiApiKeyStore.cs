@@ -15,7 +15,8 @@ public sealed class DpapiApiKeyStore(IOptions<ChessCoachOptions> options) : IApi
 {
     public const string FileName = "anthropic-api-key.bin";
 
-    // Extra entropy so other programs running as the same user cannot decrypt the file with a plain Unprotect call.
+    // Extra entropy ties the file to this app's format. It is not a secret (it is in the repository): DPAPI protects the key
+    // from other Windows users and other computers, not from other programs running as this user.
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("ChessCoach/anthropic-api-key/v1");
 
     private string FilePath => Path.Combine(options.Value.SecretsDirectory, FileName);
