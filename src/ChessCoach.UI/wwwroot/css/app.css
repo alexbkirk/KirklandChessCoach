@@ -70,3 +70,20 @@ html, body {
     margin: 4px 0 0;
     padding-left: 20px;
 }
+
+.opening-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 1000px) {
+    .opening-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.focus-muted {
+    color: var(--mud-palette-text-secondary);
+    font-weight: 400;
+}

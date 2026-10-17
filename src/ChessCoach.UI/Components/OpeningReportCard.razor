@@ -1,0 +1,114 @@
+@using System.Globalization
+@using ChessCoach.Core.Domain
+@inject OpeningReportService Openings
+
+<div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+    <MudText Typo="Typo.h6">Opening report card</MudText>
+    <MudText Typo="Typo.caption">your top 3 openings per colour, each with its 8 most-played variations</MudText>
+</div>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_report is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <div class="opening-grid">
+        @foreach (var color in _report.Colors)
+        {
+            <div>
+                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                    <b>@(color.Color == "white" ? "White" : "Black")</b>
+                    <span class="focus-muted">· your average win rate @Percent(color.WinPercent)</span>
+                </MudText>
+                @if (color.Families.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="focus-muted">No games as @color.Color yet.</MudText>
+                }
+                @foreach (var family in color.Families)
+                {
+                    <MudPaper Class="pa-3 mb-3" Outlined="true">
+                        <div class="d-flex justify-space-between align-center mb-1">
+                            <MudText Typo="Typo.subtitle2"><b>@family.Family</b></MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@VerdictColor(family.Verdict)">@family.Verdict · @family.VerdictReason</MudChip>
+                        </div>
+                        <MudText Typo="Typo.body2" Class="mb-2">
+                            @Stats(family.Stats)
+                        </MudText>
+                        <MudSimpleTable Dense="true">
+                            <thead>
+                                <tr><th>Variation</th><th class="text-right">Games</th><th class="text-right">Win %</th><th class="text-right">First slip</th><th class="text-right">Eval @@10</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var variation in family.Variations)
+                                {
+                                    <tr>
+                                        <td>@VariationName(family.Family, variation.Opening)</td>
+                                        <td class="text-right">@variation.Stats.Games</td>
+                                        <td class="text-right">@Percent(variation.Stats.WinPercent)</td>
+                                        <td class="text-right">@SlipText(variation.Stats)</td>
+                                        <td class="text-right">@EvalText(variation.Stats.AvgEvalAt10)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudPaper>
+                }
+            </div>
+        }
+    </div>
+    <MudText Typo="Typo.caption" Class="mt-2">
+        <b>First slip</b> is the first of your first 15 moves that loses 100 centipawns or more (the typical move, and the share of games where it happens).
+        <b>Eval @@10</b> is Stockfish's evaluation from your side after your 10th move.
+        <b>Fix</b>: at least 20 games, win rate 3 points below your average, or Eval @@10 of -0.5 or worse.
+        <b>Keep</b>: at least 20 games, win rate 3 points above your average, and Eval @@10 not negative. Otherwise <b>Watch</b>.
+    </MudText>
+}
+
+@code {
+    private OpeningReport? _report;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _report = await Openings.GetAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string Percent(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+
+    private static string Stats(OpeningStats s) =>
+        $"{s.Games} games · {Percent(s.WinPercent)} wins · {s.BlundersPerGame.ToString("0.0", CultureInfo.InvariantCulture)} blunders per game · " +
+        $"first slip {SlipText(s)} · eval @10 {EvalText(s.AvgEvalAt10)}";
+
+    private static string SlipText(OpeningStats s) =>
+        s.MedianFirstSlipMove is null ? "none" : $"move {Math.Round(s.MedianFirstSlipMove.Value).ToString(CultureInfo.InvariantCulture)} ({s.SlipSharePercent.ToString("0", CultureInfo.InvariantCulture)}% of games)";
+
+    private static string EvalText(double? cp) =>
+        cp is null ? "–" : (cp.Value / 100.0).ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture);
+
+    /// <summary>The variation name without the family prefix, as on the web dashboard.</summary>
+    private static string VariationName(string family, string opening)
+    {
+        if (!opening.StartsWith(family, StringComparison.Ordinal)) return opening;
+        var rest = opening[family.Length..].Trim();
+        return rest.Length == 0 ? "(main line)" : rest;
+    }
+
+    private static Color VerdictColor(string verdict) => verdict switch
+    {
+        "Keep" => Color.Success,
+        "Fix" => Color.Error,
+        _ => Color.Default,
+    };
+}

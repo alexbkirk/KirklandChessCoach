@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddSingleton<DrillService>();
         services.AddSingleton<IFocusRepository, FocusRepository>();
         services.AddSingleton<WeeklyFocusService>();
+        services.AddSingleton<IOpeningRepository, OpeningRepository>();
+        services.AddSingleton<OpeningReportService>();
         return services;
     }
 }
