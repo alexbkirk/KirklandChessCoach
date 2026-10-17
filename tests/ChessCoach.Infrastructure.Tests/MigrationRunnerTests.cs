@@ -7,7 +7,7 @@ public sealed class MigrationRunnerTests
     private static readonly string[] ExpectedTables =
     [
         "app_settings", "blunder_notes", "blunder_tags", "coach_notes", "drill_days", "drill_slots", "game_analysis",
-        "games", "moves", "puzzle_attempts", "puzzle_progress", "schema_version",
+        "games", "moves", "opening_practice", "puzzle_attempts", "puzzle_progress", "schema_version",
     ];
 
     [Fact]

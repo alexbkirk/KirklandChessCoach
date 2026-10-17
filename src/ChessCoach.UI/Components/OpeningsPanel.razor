@@ -5,7 +5,10 @@
 <div class="d-flex align-center gap-4 mb-3 flex-wrap">
     <MudNumericField T="int" Label="Minimum games" Value="_minGames" ValueChanged="SetMinGames"
                      Min="1" Max="500" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" />
-    <MudText Typo="Typo.caption">@(_rows?.Count ?? 0) openings. Click a column heading to sort.</MudText>
+    <MudText Typo="Typo.caption">
+        @(_rows?.Count ?? 0) openings. Click a column heading to sort.
+        @(ColorFilter is null ? "Choose White or Black above to open an opening's practice page." : "Click an opening to review and practise it.")
+    </MudText>
 </div>
 
 @if (_error is not null)
@@ -35,7 +38,16 @@ else
             @foreach (var row in Sorted())
             {
                 <tr>
-                    <td>@row.Family</td>
+                    <td>
+                        @if (ColorFilter is null)
+                        {
+                            @row.Family
+                        }
+                        else
+                        {
+                            <a href="@OpeningLinks.Family(ColorFilter, row.Family)">@row.Family</a>
+                        }
+                    </td>
                     <td class="text-right">@row.Record.Games</td>
                     <td class="text-right">@row.Record.WinPercent.ToString("0.0", CultureInfo.InvariantCulture)%</td>
                     <td style="min-width:160px" title="@row.Record.Wins W, @row.Record.Draws D, @row.Record.Losses L">

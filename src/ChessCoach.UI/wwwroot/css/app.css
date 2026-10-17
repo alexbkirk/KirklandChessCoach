@@ -129,3 +129,34 @@ html, body {
 .wdl-w { background: #2e8b57; }
 .wdl-d { background: #9aa0a6; }
 .wdl-l { background: #c8553d; }
+
+.line-moves {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    line-height: 1.8;
+}
+
+.line-move {
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.line-move:hover {
+    background: var(--mud-palette-action-default-hover);
+}
+
+.line-move.selected {
+    background: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+}
+
+.line-move.costly {
+    color: var(--mud-palette-error);
+    font-weight: 600;
+}
+
+.line-move.selected.costly {
+    color: var(--mud-palette-primary-text);
+}

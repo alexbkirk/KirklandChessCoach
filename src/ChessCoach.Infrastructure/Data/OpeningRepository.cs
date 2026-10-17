@@ -1,3 +1,4 @@
+using System.Globalization;
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
 using Dapper;
@@ -50,6 +51,61 @@ public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOp
             EvalAt10: r.EvalAt10White is null ? null : Clamp(r.Color == "white" ? r.EvalAt10White.Value : -r.EvalAt10White.Value))).ToList();
     }
 
+    public async Task<(IReadOnlyList<VariationGame> Games, IReadOnlyList<VariationPly> Plies)> LoadVariationAsync(OpeningScope scope, CancellationToken cancellationToken = default)
+    {
+        const string Where = "g.color = @Color AND (@Opening IS NULL OR g.opening = @Opening) AND (@Family IS NULL OR g.family = @Family)";
+        var args = new { scope.Color, scope.Opening, scope.Family };
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        var games = await connection.QueryAsync<GameRow>(new CommandDefinition(
+            $"""
+            SELECT g.id AS GameId, COALESCE(g.result, '') AS Result, CAST(g.date AS TEXT) AS Date,
+                   COALESCE(g.opponent, '') AS Opponent, COALESCE(g.url, '') AS Url
+            FROM games g WHERE {Where}
+            """,
+            args,
+            cancellationToken: cancellationToken));
+        // CROSS JOIN makes SQLite start from the (few) games and look moves up by primary key, instead of scanning moves.
+        var plies = await connection.QueryAsync<PlyRow>(new CommandDefinition(
+            $"""
+            SELECT m.game_id AS GameId, m.ply AS Ply, m.fen_before AS Fen, m.san AS San, m.uci AS Uci, m.is_mine AS IsMine,
+                   m.best_san AS BestSan, m.best_uci AS BestUci, COALESCE(m.cp_loss, 0) AS CpLoss
+            FROM games g CROSS JOIN moves m ON m.game_id = g.id AND m.ply <= 30
+            WHERE {Where}
+            ORDER BY m.game_id, m.ply
+            """,
+            args,
+            cancellationToken: cancellationToken));
+        return (
+            games.Select(g => new VariationGame(g.GameId, g.Result, g.Date, g.Opponent, g.Url)).ToList(),
+            plies.Select(p => new VariationPly(p.GameId, p.Ply, p.Fen, p.San, p.Uci, p.IsMine != 0, p.BestSan, p.BestUci, p.CpLoss)).ToList());
+    }
+
+    public async Task<IReadOnlyDictionary<string, PracticeTally>> LoadPracticeAsync(IReadOnlyCollection<string> keys, CancellationToken cancellationToken = default)
+    {
+        if (keys.Count == 0) return new Dictionary<string, PracticeTally>();
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<PracticeRow>(new CommandDefinition(
+            """
+            SELECT p.position_key AS PositionKey, COUNT(*) AS Tries, SUM(p.correct) AS Correct,
+                   (SELECT l.correct FROM opening_practice l WHERE l.position_key = p.position_key ORDER BY l.id DESC LIMIT 1) AS LastCorrect
+            FROM opening_practice p
+            WHERE p.position_key IN @keys
+            GROUP BY p.position_key
+            """,
+            new { keys },
+            cancellationToken: cancellationToken));
+        return rows.ToDictionary(r => r.PositionKey, r => new PracticeTally(r.Tries, r.Correct, r.LastCorrect != 0));
+    }
+
+    public async Task RecordPracticeAsync(string key, string playedUci, bool correct, DateTimeOffset atUtc, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO opening_practice(position_key, played_uci, correct, at_utc) VALUES (@key, @playedUci, @correct, @at)",
+            new { key, playedUci, correct = correct ? 1 : 0, at = atUtc.ToString("o", CultureInfo.InvariantCulture) },
+            cancellationToken: cancellationToken));
+    }
+
     private static int Clamp(int cp) => Math.Clamp(cp, -EvalCap, EvalCap);
 
     private sealed class Row
@@ -69,5 +125,50 @@ public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOp
         public int? FirstSlipMove { get; set; }
 
         public int? EvalAt10White { get; set; }
+    }
+
+    private sealed class GameRow
+    {
+        public string GameId { get; set; } = "";
+
+        public string Result { get; set; } = "";
+
+        public string Date { get; set; } = "";
+
+        public string Opponent { get; set; } = "";
+
+        public string Url { get; set; } = "";
+    }
+
+    private sealed class PlyRow
+    {
+        public string GameId { get; set; } = "";
+
+        public int Ply { get; set; }
+
+        public string Fen { get; set; } = "";
+
+        public string San { get; set; } = "";
+
+        public string Uci { get; set; } = "";
+
+        public int IsMine { get; set; }
+
+        public string? BestSan { get; set; }
+
+        public string? BestUci { get; set; }
+
+        public int CpLoss { get; set; }
+    }
+
+    private sealed class PracticeRow
+    {
+        public string PositionKey { get; set; } = "";
+
+        public int Tries { get; set; }
+
+        public int Correct { get; set; }
+
+        public int LastCorrect { get; set; }
     }
 }

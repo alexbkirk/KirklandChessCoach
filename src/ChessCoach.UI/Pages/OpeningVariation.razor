@@ -1,0 +1,299 @@
+@page "/openings"
+@using System.Globalization
+@inject OpeningVariationService Variations
+
+<PageTitle>@(_scope?.Name ?? "Opening") · ChessCoach</PageTitle>
+
+<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
+
+@if (_scope is null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-3">No opening chosen. Open this page from the opening report or the Stats openings tab.</MudAlert>
+}
+else
+{
+    <MudText Typo="Typo.h4" Class="mt-1">@_scope.Name</MudText>
+    @if (_review is not null)
+    {
+        <MudText Typo="Typo.body1" Class="mb-3">
+            as @(Side) · @_review.Record.Games games · @Percent(_review.Record.WinPercent) wins
+            (@_review.Record.Wins W, @_review.Record.Draws D, @_review.Record.Losses L)
+            @if (_scope.Opening is not null && _family is not null)
+            {
+                <span> · <a href="@OpeningLinks.Family(_scope.Color, _family)">whole @_family</a></span>
+            }
+        </MudText>
+    }
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+    }
+    else if (_review is null)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_review.Record.Games == 0)
+    {
+        <MudAlert Severity="Severity.Info">You have no games in this opening as @Side.</MudAlert>
+    }
+    else
+    {
+        <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" @bind-ActivePanelIndex="_tab">
+            <MudTabPanel Text="Your usual line">
+                @if (_review.Line.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">Your games here split too early for a usual line (fewer than @OpeningVariationCalculator.MinLineGames games agree on the first move).</MudAlert>
+                }
+                else
+                {
+                    var move = _review.Line[_lineIndex];
+                    <div class="puzzle-layout">
+                        <div class="puzzle-board">
+                            <ChessBoard Fen="@move.Fen" Orientation="@_scope.Color" Marks="@LineMarks(move)" />
+                        </div>
+                        <div class="puzzle-side">
+                            <div class="line-moves mb-3">
+                                @for (var i = 0; i < _review.Line.Count; i++)
+                                {
+                                    var index = i;
+                                    var m = _review.Line[i];
+                                    <span class="@LineClass(index, m)" @onclick="() => _lineIndex = index">@MoveNumber(m.Ply, index == 0)@m.San</span>
+                                }
+                            </div>
+                            <MudText Typo="Typo.subtitle1"><b>@MoveNumber(move.Ply, true)@move.San</b></MudText>
+                            <MudText Typo="Typo.body2" Class="mb-2">
+                                @(move.IsMine ? "You" : "Your opponent") played @move.San here in @move.Games of the @move.Reached games that reached this position.
+                            </MudText>
+                            @if (move.IsMine)
+                            {
+                                @if (move.BestSan is not null && move.BestUci != move.Uci && move.AvgCpLoss >= NoticeableCp)
+                                {
+                                    <MudAlert Severity="@(move.AvgCpLoss >= 50 ? Severity.Warning : Severity.Info)" Dense="true" Class="mb-2">
+                                        The engine prefers <b>@move.BestSan</b> (green arrow). @move.San loses @Pawns(move.AvgCpLoss) on average@(move.Slips > 0 ? $", and lost a pawn or more in {move.Slips} of your games" : "").
+                                    </MudAlert>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-2">
+                                        @(move.BestUci == move.Uci ? "This is the engine's choice too." : $"A fine move: the engine's top choice is {move.BestSan}, but {move.San} is within a fraction of a pawn.")
+                                    </MudAlert>
+                                }
+                            }
+                            <div class="d-flex gap-2">
+                                <MudButton Variant="Variant.Outlined" Disabled="@(_lineIndex == 0)" OnClick="() => _lineIndex--">Back</MudButton>
+                                <MudButton Variant="Variant.Outlined" Disabled="@(_lineIndex == _review.Line.Count - 1)" OnClick="() => _lineIndex++">Next</MudButton>
+                            </div>
+                            <MudText Typo="Typo.caption" Class="d-block mt-3">
+                                The line follows the most common move at each point while at least @OpeningVariationCalculator.MinLineGames games agree.
+                                Moves in red lost a pawn or more on average.
+                            </MudText>
+                        </div>
+                    </div>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Where you go wrong ({_review.Trouble.Count})")">
+                @if (_review.Trouble.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success">None of your first 15 moves in these games lost a pawn or more. Nothing to fix here.</MudAlert>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        Positions from these games where one of your first 15 moves lost a pawn or more, most frequent first.
+                        A position you have had only once is listed only if it came in your first @OpeningVariationCalculator.SingleSlipMaxMove moves.
+                    </MudText>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr><th>Move</th><th>After</th><th>Your mistake</th><th>Engine</th><th class="text-right">Slips</th><th>Practice</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < _review.Trouble.Count; i++)
+                            {
+                                var index = i;
+                                var spot = _review.Trouble[i];
+                                <tr>
+                                    <td>@MoveNumber(spot.Ply, true)</td>
+                                    <td>@spot.Path</td>
+                                    <td>@spot.MistakeSan (@spot.MistakeCount×, loses @Pawns(spot.MistakeAvgCpLoss))</td>
+                                    <td><b>@spot.BestSan</b></td>
+                                    <td class="text-right">@spot.Slips of @spot.Reached</td>
+                                    <td>@TallyText(spot)</td>
+                                    <td class="text-nowrap">
+                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => StartPractice(index)">Practise</MudButton>
+                                        <a href="@spot.ExampleUrl" target="_blank" rel="noopener" class="ml-2">game</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="Practice" Disabled="@(_review.Trouble.Count == 0)">
+                @if (_review.Trouble.Count > 0)
+                {
+                    var spot = _review.Trouble[_practiceIndex];
+                    <MudText Typo="Typo.caption">Position @(_practiceIndex + 1) of @_review.Trouble.Count · @TallyText(spot)</MudText>
+                    <div class="puzzle-layout mt-1">
+                        <div class="puzzle-board">
+                            <ChessBoard @ref="_practiceBoard" Fen="@spot.Fen" Orientation="@_scope.Color"
+                                        MovableColor="@(_answer is null ? _scope.Color : null)" Marks="@PracticeMarks(spot)" OnMove="AnswerAsync" />
+                        </div>
+                        <div class="puzzle-side">
+                            <MudText Typo="Typo.body1" Class="mb-1"><b>@Side to play, move @((spot.Ply + 1) / 2).</b></MudText>
+                            <MudText Typo="Typo.body2" Class="mb-3">After @spot.Path. Find a good move.</MudText>
+                            @if (_answer is null)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="ShowAnswer">Show answer</MudButton>
+                            }
+                            else
+                            {
+                                <MudPaper Class="pa-3 mb-3" Style="@(_answer.Correct ? "background:rgba(46,139,87,.18)" : "background:rgba(200,85,61,.18)")">
+                                    <MudText Typo="Typo.h6">@(_answer.Correct ? "Good move" : _answer.Played is null ? "Answer shown" : "Not this one")</MudText>
+                                    @if (_answer.Played is not null)
+                                    {
+                                        <MudText Typo="Typo.body2">You played @_answer.Played.San.</MudText>
+                                    }
+                                    <MudText Typo="Typo.body2">The engine's choice is <b>@spot.BestSan</b> (green arrow).</MudText>
+                                    <MudText Typo="Typo.body2" Class="mt-1">
+                                        In your games you went wrong here @spot.Slips of @spot.Reached times, most often with @spot.MistakeSan (@spot.MistakeCount×, losing @Pawns(spot.MistakeAvgCpLoss)).
+                                    </MudText>
+                                </MudPaper>
+                                <div class="d-flex gap-2">
+                                    <MudButton Variant="Variant.Outlined" OnClick="TryAgainAsync">Try again</MudButton>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync">Next position</MudButton>
+                                    <a href="@spot.ExampleUrl" target="_blank" rel="noopener" class="align-self-center">view game</a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "color")] public string? ColorQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "family")] public string? FamilyQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "opening")] public string? OpeningQuery { get; set; }
+
+    private sealed record Answer(BoardMove? Played, bool Correct);
+
+    private OpeningScope? _scope;
+    private string? _family;
+    private VariationReview? _review;
+    private IReadOnlyDictionary<string, PracticeTally> _tally = new Dictionary<string, PracticeTally>();
+    private string? _error;
+    private int _tab;
+    private int _lineIndex;
+    private int _practiceIndex;
+    private Answer? _answer;
+    private ChessBoard? _practiceBoard;
+
+    private string Side => _scope?.Color == "black" ? "Black" : "White";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var color = ColorQuery is "white" or "black" ? ColorQuery : null;
+        var scope = color is null || (string.IsNullOrWhiteSpace(FamilyQuery) && string.IsNullOrWhiteSpace(OpeningQuery))
+            ? null
+            : new OpeningScope(color, string.IsNullOrWhiteSpace(OpeningQuery) ? FamilyQuery : null, string.IsNullOrWhiteSpace(OpeningQuery) ? null : OpeningQuery);
+        if (scope == _scope && _review is not null) return;
+        _scope = scope;
+        _review = null;
+        _error = null;
+        _lineIndex = 0;
+        _practiceIndex = 0;
+        _answer = null;
+        if (scope is null) return;
+        try
+        {
+            _review = await Task.Run(() => Variations.GetAsync(scope));
+            _tally = await Variations.GetPracticeAsync(_review.Trouble.Select(t => t.Key).ToList());
+            _family = string.IsNullOrWhiteSpace(FamilyQuery) ? null : FamilyQuery;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void StartPractice(int index)
+    {
+        _practiceIndex = index;
+        _answer = null;
+        _tab = 2;
+    }
+
+    private async Task AnswerAsync(BoardMove move)
+    {
+        if (_review is null || _answer is not null) return;
+        var spot = _review.Trouble[_practiceIndex];
+        var correct = await Variations.AnswerAsync(spot, move.Uci);
+        _answer = new Answer(move, correct);
+        _tally = await Variations.GetPracticeAsync(_review.Trouble.Select(t => t.Key).ToList());
+        if (_practiceBoard is not null) await _practiceBoard.ResetAsync();
+    }
+
+    private void ShowAnswer() => _answer = new Answer(null, false);
+
+    private async Task TryAgainAsync()
+    {
+        _answer = null;
+        if (_practiceBoard is not null) await _practiceBoard.ResetAsync();
+    }
+
+    private async Task NextAsync()
+    {
+        if (_review is null) return;
+        _practiceIndex = (_practiceIndex + 1) % _review.Trouble.Count;
+        await TryAgainAsync();
+    }
+
+    private IReadOnlyList<BoardMark> LineMarks(LineMove move)
+    {
+        var marks = new List<BoardMark> { Arrow(move.Uci, move.IsMine && move.AvgCpLoss >= 100 ? "red" : "yellow") };
+        if (move.IsMine && move.BestUci is { Length: >= 4 } best && best != move.Uci) marks.Add(Arrow(best, "green"));
+        return marks;
+    }
+
+    private IReadOnlyList<BoardMark> PracticeMarks(TroubleSpot spot)
+    {
+        if (_answer is null) return [];
+        var marks = new List<BoardMark>();
+        if (_answer.Played is { } played && played.Uci != spot.BestUci) marks.Add(Arrow(played.Uci, _answer.Correct ? "blue" : "red"));
+        if (spot.BestUci.Length >= 4) marks.Add(Arrow(spot.BestUci, "green"));
+        return marks;
+    }
+
+    private static BoardMark Arrow(string uci, string brush) => new(uci[..2], brush, uci[2..4]);
+
+    private string LineClass(int index, LineMove move) =>
+        "line-move" + (index == _lineIndex ? " selected" : "") + (move.IsMine && move.AvgCpLoss >= 100 ? " costly" : "");
+
+    private string TallyText(TroubleSpot spot) =>
+        _tally.TryGetValue(spot.Key, out var t)
+            ? $"{t.Correct} of {t.Tries} right{(t.LastCorrect ? ", last one right" : "")}"
+            : "not practised yet";
+
+    /// <summary>"3." before White's move, "3..." before Black's (only when it starts a sequence or stands alone).</summary>
+    private static string MoveNumber(int ply, bool standalone)
+    {
+        var number = ((ply + 1) / 2).ToString(CultureInfo.InvariantCulture);
+        return ply % 2 == 1 ? number + "." : standalone ? number + "..." : "";
+    }
+
+    /// <summary>A loss below this (in centipawns) is not worth a warning: the move is as good as the engine's.</summary>
+    private const double NoticeableCp = 20;
+
+    /// <summary>Losses are capped at 1000 centipawns in the analysis, which means a lost game (mate or a queen and more).</summary>
+    private static string Pawns(double cp) =>
+        cp >= 900 ? "a decisive amount (mate or a queen or more)" : (cp / 100.0).ToString("0.0", CultureInfo.InvariantCulture) + " pawns";
+
+    private static string Percent(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+}
