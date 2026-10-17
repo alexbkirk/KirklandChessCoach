@@ -1,0 +1,21 @@
+html, body {
+    margin: 0;
+    font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+}
+
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.6rem 1.25rem;
+    background: #b32121;
+    color: #fff;
+    z-index: 2000;
+}
+
+#blazor-error-ui .reload {
+    color: #fff;
+    margin-left: 0.5rem;
+}

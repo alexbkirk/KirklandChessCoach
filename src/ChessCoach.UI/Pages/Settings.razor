@@ -1,0 +1,57 @@
+@page "/settings"
+@inject IDiagnosticsService Diagnostics
+
+<PageTitle>Settings · ChessCoach</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+<MudText Typo="Typo.h6" Class="mb-2">Diagnostics</MudText>
+
+@if (_checks is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr><th style="width:48px"></th><th>Check</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var check in _checks)
+            {
+                <tr>
+                    <td><MudIcon Icon="@IconFor(check.Status)" Color="@ColorFor(check.Status)" Size="Size.Small" /></td>
+                    <td>@check.Name</td>
+                    <td>@check.Detail</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+    <MudButton Class="mt-3" Variant="Variant.Outlined" OnClick="RunAsync">Run again</MudButton>
+}
+
+@code {
+    private IReadOnlyList<DiagnosticCheck>? _checks;
+
+    protected override Task OnInitializedAsync() => RunAsync();
+
+    private async Task RunAsync()
+    {
+        _checks = null;
+        _checks = await Diagnostics.RunAsync();
+    }
+
+    private static string IconFor(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => Icons.Material.Filled.CheckCircle,
+        DiagnosticStatus.Warning => Icons.Material.Filled.Warning,
+        _ => Icons.Material.Filled.Error,
+    };
+
+    private static Color ColorFor(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => Color.Success,
+        DiagnosticStatus.Warning => Color.Warning,
+        _ => Color.Error,
+    };
+}
