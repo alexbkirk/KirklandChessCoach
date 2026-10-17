@@ -27,7 +27,7 @@ else
     var puzzle = _set[_index];
     var ui = _ui[_index];
     <MudText Typo="Typo.body2" Class="mb-2">
-        @(puzzle.Color == "white" ? "White" : "Black") to move · @puzzle.Date vs @puzzle.Opponent ·
+        @(puzzle.Color == "white" ? "White" : "Black") to move · @puzzle.Date vs <a href="@OpponentLinks.For(puzzle.Opponent)">@puzzle.Opponent</a> ·
         <a href="@puzzle.Url" target="_blank" rel="noopener">view game</a>
     </MudText>
 

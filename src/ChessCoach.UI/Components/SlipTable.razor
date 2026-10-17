@@ -1,0 +1,42 @@
+@using System.Globalization
+
+@if (Spots.Count == 0)
+{
+    <MudText Typo="Typo.body2">@Empty</MudText>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr><th>Move</th><th>After</th><th>@Whose mistake</th><th>Better</th><th class="text-right">Slips</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var spot in Spots)
+            {
+                <tr>
+                    <td>@MoveNumber(spot.Ply)</td>
+                    <td>@spot.Path</td>
+                    <td>@spot.MistakeSan (@spot.MistakeCount×, loses @Pawns(spot.MistakeAvgCpLoss))</td>
+                    <td><b>@spot.BestSan</b></td>
+                    <td class="text-right">@spot.Slips of @spot.Reached</td>
+                    <td><a href="@spot.ExampleUrl" target="_blank" rel="noopener">game</a></td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    /// <summary>Positions where one side's move in the first 15 lost a pawn or more (see OpeningVariationCalculator).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TroubleSpot> Spots { get; set; } = [];
+
+    /// <summary>"Your" or "Their", for the mistake column.</summary>
+    [Parameter] public string Whose { get; set; } = "Your";
+
+    [Parameter] public string Empty { get; set; } = "Nothing here.";
+
+    private static string MoveNumber(int ply) => ((ply + 1) / 2).ToString(CultureInfo.InvariantCulture) + (ply % 2 == 1 ? "." : "...");
+
+    private static string Pawns(double cp) =>
+        cp >= 900 ? "a decisive amount" : (cp / 100.0).ToString("0.0", CultureInfo.InvariantCulture) + " pawns";
+}

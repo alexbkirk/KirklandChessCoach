@@ -160,3 +160,13 @@ html, body {
 .line-move.selected.costly {
     color: var(--mud-palette-primary-text);
 }
+
+.rate-worse {
+    color: var(--mud-palette-error);
+    font-weight: 600;
+}
+
+.rate-better {
+    color: var(--mud-palette-success);
+    font-weight: 600;
+}

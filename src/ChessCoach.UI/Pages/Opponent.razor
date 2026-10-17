@@ -1,0 +1,281 @@
+@page "/opponent"
+@using System.Globalization
+@using ChessCoach.Core.Stats
+@inject OpponentService Opponents
+
+<PageTitle>@(NameQuery ?? "Opponent") · ChessCoach</PageTitle>
+
+<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
+
+@if (string.IsNullOrWhiteSpace(NameQuery))
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-3">No opponent chosen. Open this page from Stats → Opponents, or click an opponent's name on a puzzle or drill card.</MudAlert>
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+}
+else if (_report is null)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-3" />
+}
+else if (_report.Record.Games == 0)
+{
+    <MudText Typo="Typo.h4" Class="mt-1">@_report.Name</MudText>
+    <MudAlert Severity="Severity.Info" Class="mt-3">No games against this opponent.</MudAlert>
+}
+else
+{
+    var r = _report;
+    <MudText Typo="Typo.h4" Class="mt-1">@r.Name</MudText>
+    <MudText Typo="Typo.body1" Class="mb-1">
+        @r.Record.Games game@(r.Record.Games == 1 ? "" : "s") · @Percent(r.Record.WinPercent) wins (@r.Record.Wins W, @r.Record.Draws D, @r.Record.Losses L)
+        · @r.FirstDate@(r.FirstDate == r.LastDate ? "" : $" to {r.LastDate}")
+    </MudText>
+    <MudText Typo="Typo.body2" Class="mb-4">
+        They were rated @Math.Round(r.AvgTheirRating).ToString(CultureInfo.InvariantCulture) on average,
+        @RatingGap(r.AvgRatingGap).
+        <a href="https://www.chess.com/member/@Uri.EscapeDataString(r.Name)" target="_blank" rel="noopener">chess.com profile</a>
+    </MudText>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6">How the games go</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">@PunishSummary(r)</MudText>
+        <MudSimpleTable Dense="true">
+            <thead>
+                <tr>
+                    <th>Phase</th>
+                    <th class="text-right">You vs them</th><th class="text-right">Your usual</th>
+                    <th class="text-right">Them vs you</th><th class="text-right">Your opponents' usual</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var phase in r.Phases)
+                {
+                    <tr>
+                        <td>@phase.Phase</td>
+                        <td class="text-right @(Worse(phase.You, phase.YouUsual) ? "rate-worse" : "")">@Rate(phase.You)</td>
+                        <td class="text-right">@Rate(phase.YouUsual)</td>
+                        <td class="text-right @(Worse(phase.OpponentsUsual, phase.Them) ? "rate-better" : "")">@Rate(phase.Them)</td>
+                        <td class="text-right">@Rate(phase.OpponentsUsual)</td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+        <MudText Typo="Typo.caption" Class="d-block mt-1">
+            Each cell: share of moves that were blunders (200+ centipawns) · average loss per move.
+            Opening is moves 1–12, middlegame 13–30, then the late game. Red: you blunder more than usual against them.
+            Green: they blunder more against you than your opponents usually do.
+        </MudText>
+    </MudPaper>
+
+    <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4">
+        <MudTabPanel Text="@($"Games ({r.Games.Count})")">
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr><th>Date</th><th>You</th><th>Opening</th><th>Result</th><th>Ending</th><th class="text-right">Your blunders</th><th class="text-right">Their blunders</th><th class="text-right">Ratings</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in r.Games)
+                    {
+                        var g = row.Game;
+                        <tr>
+                            <td>@g.Date</td>
+                            <td>@(g.Color == "white" ? "White" : "Black")</td>
+                            <td>
+                                @if (string.IsNullOrEmpty(g.Opening))
+                                {
+                                    @g.Family
+                                }
+                                else
+                                {
+                                    <a href="@OpeningLinks.Variation(g.Color, g.Family, g.Opening)">@g.Opening</a>
+                                }
+                            </td>
+                            <td><MudChip T="string" Size="Size.Small" Color="@ResultColor(g.Result)">@g.Result</MudChip></td>
+                            <td>@g.Ending</td>
+                            <td class="text-right">@row.MyBlunders</td>
+                            <td class="text-right">@row.TheirBlunders</td>
+                            <td class="text-right">@g.MyRating – @g.OppRating</td>
+                            <td><a href="@g.Url" target="_blank" rel="noopener">view</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Where you go wrong">
+            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Your costliest blunders against them</b></MudText>
+            @if (r.YourBlunders.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mb-4">No blunders against this opponent.</MudText>
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                    <thead><tr><th>Game</th><th>Move</th><th>You played</th><th>Better</th><th class="text-right">Winning chances</th><th class="text-right">Clock</th><th>What happened</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var m in r.YourBlunders)
+                        {
+                            <tr>
+                                <td>@m.Game.Date</td>
+                                <td>@MoveNumber(m.Ply)</td>
+                                <td>@m.San</td>
+                                <td>@m.BestSan</td>
+                                <td class="text-right">@Chances(m)</td>
+                                <td class="text-right">@Clock(m.Clock)</td>
+                                <td>@m.NoteHeadline</td>
+                                <td><a href="@m.Game.Url" target="_blank" rel="noopener">view</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Your opening slips against them</b></MudText>
+            <SlipTable Spots="@r.YourOpeningSlips" Whose="Your" Empty="None of your first 15 moves against them lost a pawn or more." />
+        </MudTabPanel>
+
+        <MudTabPanel Text="Where they are weak">
+            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Their blunders, and whether you punished them</b></MudText>
+            @if (r.TheirBlunders.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mb-4">They have not blundered against you.</MudText>
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                    <thead><tr><th>Game</th><th>Move</th><th>They played</th><th class="text-right">Their chances</th><th class="text-right">Their clock</th><th>You replied</th><th>Punish with</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var m in r.TheirBlunders)
+                        {
+                            <tr>
+                                <td>@m.Game.Date</td>
+                                <td>@MoveNumber(m.Ply)</td>
+                                <td>@m.San</td>
+                                <td class="text-right">@Chances(m)</td>
+                                <td class="text-right">@Clock(m.Clock)</td>
+                                <td>
+                                    @if (m.Reply is null)
+                                    {
+                                        <span>–</span>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="@(m.Punished ? Color.Success : Color.Error)">@m.Reply @(m.Punished ? "✔" : "missed")</MudChip>
+                                    }
+                                </td>
+                                <td>@(m.Punished ? "" : m.ReplyBestSan)</td>
+                                <td><a href="@m.Game.Url" target="_blank" rel="noopener">view</a></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Their opening slips against you</b></MudText>
+            <SlipTable Spots="@r.TheirOpeningSlips" Whose="Their" Empty="None of their first 15 moves against you lost a pawn or more." />
+        </MudTabPanel>
+
+        <MudTabPanel Text="Openings and endings">
+            <div class="stats-grid">
+                <div>
+                    <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Openings</b></MudText>
+                    <MudSimpleTable Dense="true">
+                        <thead><tr><th>Opening</th><th>You</th><th class="text-right">Games</th><th class="text-right">Win %</th></tr></thead>
+                        <tbody>
+                            @foreach (var o in r.Openings)
+                            {
+                                <tr>
+                                    <td><a href="@OpeningLinks.Family(o.Color, o.Family)">@o.Family</a></td>
+                                    <td>@(o.Color == "white" ? "White" : "Black")</td>
+                                    <td class="text-right">@o.Record.Games</td>
+                                    <td class="text-right">@Percent(o.Record.WinPercent)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </div>
+                <div>
+                    <MudText Typo="Typo.subtitle1" Class="mb-1"><b>How the games ended</b></MudText>
+                    <MudSimpleTable Dense="true">
+                        <thead><tr><th>Ending</th><th class="text-right">Games</th><th class="text-right">You won</th><th class="text-right">You lost</th></tr></thead>
+                        <tbody>
+                            @foreach (var e in r.Endings)
+                            {
+                                <tr>
+                                    <td>@e.Label</td>
+                                    <td class="text-right">@e.Record.Games</td>
+                                    <td class="text-right">@e.Record.Wins</td>
+                                    <td class="text-right">@e.Record.Losses</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </div>
+            </div>
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "name")] public string? NameQuery { get; set; }
+
+    private OpponentReport? _report;
+    private string? _loadedFor;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NameQuery) || NameQuery == _loadedFor) return;
+        var name = NameQuery;
+        _loadedFor = name;
+        _report = null;
+        _error = null;
+        try
+        {
+            var report = await Task.Run(() => Opponents.GetAsync(name));
+            if (name == _loadedFor) _report = report;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string PunishSummary(OpponentReport r)
+    {
+        var withReply = r.TheirBlunders.Where(m => m.Reply is not null).ToList();
+        if (withReply.Count == 0) return "They have not blundered against you with a move left for you to reply.";
+        var punished = withReply.Count(m => m.Punished);
+        return $"They blundered {withReply.Count} time{(withReply.Count == 1 ? "" : "s")} against you, and you punished {punished} of them " +
+               $"({Percent(100.0 * punished / withReply.Count)}). You blundered {r.Games.Sum(g => g.MyBlunders)} time{(r.Games.Sum(g => g.MyBlunders) == 1 ? "" : "s")}.";
+    }
+
+    private static bool Worse(PhaseRate a, PhaseRate b) => a.Moves > 0 && b.Moves > 0 && a.BlunderPercent > b.BlunderPercent + 2;
+
+    private static string Rate(PhaseRate rate) =>
+        rate.Moves == 0 ? "–" : $"{Percent(rate.BlunderPercent)} · {(rate.AvgCpLoss / 100.0).ToString("0.00", CultureInfo.InvariantCulture)}";
+
+    private static string RatingGap(double gap) => Math.Round(gap) switch
+    {
+        0 => "the same as you",
+        > 0 => $"{Math.Round(gap).ToString(CultureInfo.InvariantCulture)} higher than you",
+        _ => $"{Math.Round(-gap).ToString(CultureInfo.InvariantCulture)} lower than you",
+    };
+
+    private static string MoveNumber(int ply) => ((ply + 1) / 2).ToString(CultureInfo.InvariantCulture) + (ply % 2 == 1 ? "." : "...");
+
+    private static string Chances(OpponentMoment m) =>
+        m.Before is null || m.After is null ? "–" : $"{Percent(m.Before.Value)} → {Percent(m.After.Value)}";
+
+    private static string Clock(double? seconds) =>
+        seconds is null ? "–" : TimeSpan.FromSeconds(Math.Max(0, seconds.Value)).ToString(@"m\:ss", CultureInfo.InvariantCulture);
+
+    private static string Percent(double value) => value.ToString("0", CultureInfo.InvariantCulture) + "%";
+
+    private static Color ResultColor(string result) => result switch
+    {
+        "win" => Color.Success,
+        "loss" => Color.Error,
+        _ => Color.Default,
+    };
+}

@@ -1,0 +1,115 @@
+@using System.Globalization
+@using ChessCoach.Core.Stats
+@inject OpponentService Opponents
+
+<div class="d-flex align-center gap-4 mb-3 flex-wrap">
+    <MudTextField T="string" Label="Search" Value="_search" ValueChanged="SetSearchAsync" Immediate="true" DebounceInterval="250"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:220px" Clearable="true" />
+    <MudNumericField T="int" Label="Minimum games" Value="_minGames" ValueChanged="SetMinGamesAsync"
+                     Min="1" Max="100" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:160px" />
+    <MudText Typo="Typo.caption">@(_rows?.Count ?? 0) opponents. Click a name to see your games and where each side goes wrong. A search includes opponents you have played once.</MudText>
+</div>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_rows is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_rows.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No opponent matches. Lower the minimum games or change the search.</MudAlert>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr><th>Opponent</th><th class="text-right">Games</th><th class="text-right">Win %</th><th>W / D / L</th><th class="text-right">Their rating</th><th>Last played</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in _rows.Take(MaxRows))
+            {
+                <tr>
+                    <td><a href="@OpponentLinks.For(row.Name)">@row.Name</a></td>
+                    <td class="text-right">@row.Record.Games</td>
+                    <td class="text-right">@row.Record.WinPercent.ToString("0.0", CultureInfo.InvariantCulture)%</td>
+                    <td style="min-width:140px" title="@row.Record.Wins W, @row.Record.Draws D, @row.Record.Losses L">
+                        <div class="wdl-bar">
+                            <span class="wdl-w" style="width:@Share(row.Record.Wins, row.Record.Games)%"></span>
+                            <span class="wdl-d" style="width:@Share(row.Record.Draws, row.Record.Games)%"></span>
+                            <span class="wdl-l" style="width:@Share(row.Record.Losses, row.Record.Games)%"></span>
+                        </div>
+                    </td>
+                    <td class="text-right">@Math.Round(row.AvgTheirRating).ToString(CultureInfo.InvariantCulture)</td>
+                    <td>@row.LastDate</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+    @if (_rows.Count > MaxRows)
+    {
+        <MudText Typo="Typo.caption" Class="mt-1">Showing the first @MaxRows. Search for a name to find others.</MudText>
+    }
+}
+
+@code {
+    private const int MaxRows = 100;
+
+    [Parameter] public string? ColorFilter { get; set; }
+
+    private IReadOnlyList<OpponentRow>? _rows;
+    private string? _error;
+    private string? _search;
+    private int _minGames = OpponentCalculator.DefaultMinGames;
+    private bool _loaded;
+    private string? _loadedFor;
+    private int _loadVersion;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loaded && _loadedFor == ColorFilter) return;
+        await LoadAsync();
+    }
+
+    private async Task SetSearchAsync(string? value)
+    {
+        _search = value;
+        // A search looks at every opponent, even ones you have played once.
+        await LoadAsync();
+    }
+
+    private async Task SetMinGamesAsync(int value)
+    {
+        _minGames = Math.Max(1, value);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var version = ++_loadVersion;
+        var color = ColorFilter;
+        var minGames = string.IsNullOrWhiteSpace(_search) ? _minGames : 1;
+        var search = _search;
+        try
+        {
+            var rows = await Task.Run(() => Opponents.ListAsync(color, minGames, search));
+            if (version != _loadVersion) return;
+            _rows = rows;
+            _loaded = true;
+            _loadedFor = color;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            if (version != _loadVersion) return;
+            _rows = null;
+            _loaded = false;
+            _error = ex.Message;
+        }
+    }
+
+    private static string Share(int part, int total) =>
+        (total == 0 ? 0 : 100.0 * part / total).ToString("0.#", CultureInfo.InvariantCulture);
+}
