@@ -18,16 +18,24 @@ public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOp
         await using var connection = await connections.OpenAsync(cancellationToken);
         var rows = await connection.QueryAsync<Row>(new CommandDefinition(
             """
+            WITH mine AS (
+                SELECT game_id, ply, class, is_last, cp_loss FROM moves WHERE is_mine = 1
+            ),
+            per_game AS (
+                SELECT game_id,
+                       SUM(CASE WHEN is_last = 0 AND class = 'blunder' THEN 1 ELSE 0 END) AS Blunders,
+                       MIN(CASE WHEN is_last = 0 AND ply <= 30 AND cp_loss >= 100 THEN (ply + 1) / 2 END) AS FirstSlipMove
+                FROM mine
+                GROUP BY game_id
+            )
             SELECT g.id AS Id, g.color AS Color, COALESCE(g.family, '') AS Family, COALESCE(g.opening, '') AS Opening,
                    g.result AS Result,
-                   (SELECT COUNT(*) FROM moves m
-                     WHERE m.game_id = g.id AND m.is_mine = 1 AND m.is_last = 0 AND m.class = 'blunder') AS Blunders,
-                   (SELECT MIN((m.ply + 1) / 2) FROM moves m
-                     WHERE m.game_id = g.id AND m.is_mine = 1 AND m.is_last = 0 AND m.ply <= 30 AND m.cp_loss >= 100) AS FirstSlipMove,
+                   COALESCE(p.Blunders, 0) AS Blunders,
+                   p.FirstSlipMove AS FirstSlipMove,
                    (SELECT m.eval_after FROM moves m
-                     WHERE m.game_id = g.id AND m.is_mine = 1
-                       AND m.ply = CASE WHEN g.color = 'white' THEN 19 ELSE 20 END) AS EvalAt10White
+                     WHERE m.game_id = g.id AND m.ply = CASE WHEN g.color = 'white' THEN 19 ELSE 20 END AND m.is_mine = 1) AS EvalAt10White
             FROM games g
+            LEFT JOIN per_game p ON p.game_id = g.id
             """,
             cancellationToken: cancellationToken));
 

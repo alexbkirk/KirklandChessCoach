@@ -77,7 +77,7 @@ else
     {
         try
         {
-            _report = await Openings.GetAsync();
+            _report = await Task.Run(() => Openings.GetAsync());
         }
         catch (Exception ex)
         {

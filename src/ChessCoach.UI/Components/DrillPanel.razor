@@ -47,7 +47,7 @@ else
     {
         try
         {
-            _day = await Drill.GetTodayAsync();
+            _day = await Task.Run(() => Drill.GetTodayAsync());
         }
         catch (Exception ex)
         {

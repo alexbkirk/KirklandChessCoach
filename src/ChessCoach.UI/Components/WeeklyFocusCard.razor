@@ -68,7 +68,7 @@ else
     {
         try
         {
-            _focus = await Focus.GetAsync();
+            _focus = await Task.Run(() => Focus.GetAsync());
         }
         catch (Exception ex)
         {
