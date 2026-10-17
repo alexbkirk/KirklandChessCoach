@@ -1,8 +1,10 @@
 using ChessCoach.Core.Abstractions;
+using ChessCoach.Core.Settings;
 using ChessCoach.Core.Stats;
 using ChessCoach.Core.Training;
 using ChessCoach.Infrastructure.Data;
 using ChessCoach.Infrastructure.Diagnostics;
+using ChessCoach.Infrastructure.Secrets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,6 +30,12 @@ public static class DependencyInjection
         services.AddSingleton<OpeningReportService>();
         services.AddSingleton<IStatsRepository, StatsRepository>();
         services.AddSingleton<StatsService>();
+        // Windows only: the desktop host is Windows-only, and the Settings page needs this service.
+        if (OperatingSystem.IsWindows())
+        {
+            services.AddSingleton<IApiKeyStore, DpapiApiKeyStore>();
+            services.AddSingleton<ApiKeySettingsService>();
+        }
         return services;
     }
 }

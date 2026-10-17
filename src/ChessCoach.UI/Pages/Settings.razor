@@ -1,9 +1,53 @@
-@page "/settings"
+﻿@page "/settings"
 @inject IDiagnosticsService Diagnostics
+@using ChessCoach.Core.Settings
+@inject ApiKeySettingsService KeySettings
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+<MudPaper Class="pa-4 mb-6" Style="max-width:640px">
+    <MudText Typo="Typo.h6">AI coach</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3">
+        The coach uses an Anthropic API key. It is saved only on this computer, encrypted for your Windows account
+        (in %LOCALAPPDATA%\ChessCoach), never in the database, the settings file or the repository.
+    </MudText>
+    @if (_key is null)
+    {
+        <MudProgressLinear Indeterminate="true" Class="mb-3" />
+    }
+    else if (_key.State == StoredApiKeyState.Present)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">A key is saved (ends in …@_key.Ending).</MudAlert>
+    }
+    else if (_key.State == StoredApiKeyState.Unreadable)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">Saved key can't be read on this account.</MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">No key saved yet.</MudAlert>
+    }
+    <MudTextField T="string" @bind-Value="_newKey" Label="@(_key?.HasFile == true ? "Replace key" : "API key")" InputType="InputType.Password"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" autocomplete="off" />
+    @if (!ApiKeySettingsService.LooksLikeAnthropicKey(_newKey))
+    {
+        <MudText Typo="Typo.caption" Color="Color.Warning">Anthropic keys usually start with "@ApiKeySettingsService.KeyPrefix". Check you pasted the whole key.</MudText>
+    }
+    @if (_key?.Message is not null)
+    {
+        <MudText Typo="Typo.caption" Class="d-block mt-1">@_key.Message</MudText>
+    }
+    <div class="d-flex gap-2 mt-3">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@string.IsNullOrWhiteSpace(_newKey)" OnClick="SaveKeyAsync">Save key</MudButton>
+        @if (_key?.HasFile == true)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="RemoveKeyAsync">Remove key</MudButton>
+        }
+    </div>
+</MudPaper>
+
 <MudText Typo="Typo.h6" Class="mb-2">Diagnostics</MudText>
 
 @if (_checks is null)
@@ -33,7 +77,22 @@ else
 @code {
     private IReadOnlyList<DiagnosticCheck>? _checks;
 
-    protected override Task OnInitializedAsync() => RunAsync();
+    private ApiKeyView? _key;
+    private string? _newKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _key = await KeySettings.LoadAsync();
+        await RunAsync();
+    }
+
+    private async Task SaveKeyAsync()
+    {
+        _key = await KeySettings.SaveAsync(_newKey);
+        if (_key.Succeeded) _newKey = null;
+    }
+
+    private async Task RemoveKeyAsync() => _key = await KeySettings.RemoveAsync();
 
     private async Task RunAsync()
     {
