@@ -87,3 +87,28 @@ html, body {
     color: var(--mud-palette-text-secondary);
     font-weight: 400;
 }
+
+.rating-chart {
+    width: 100%;
+    height: 260px;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 900px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
