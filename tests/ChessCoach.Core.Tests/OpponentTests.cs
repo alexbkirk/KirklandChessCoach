@@ -113,6 +113,50 @@ public sealed class OpponentTests
     }
 
     [Fact]
+    public void Your_blunders_are_ranked_by_winning_chances_lost_not_by_the_capped_centipawn_loss()
+    {
+        var games = new[] { Game("g1", "2025-01-01", "white", "win") };
+        var plies = new[]
+        {
+            // both capped at 1000 cp; the first loses 98 points of winning chances, the second only 20 (already winning by a lot)
+            new OpponentPly("g1", 11, true, "Qh5", "d1h5", "f1", "Qd1", "d1d1", 1000, "blunder", false, 100, null, EvalBefore: 300, EvalAfter: -800),
+            new OpponentPly("g1", 21, true, "Rd2", "d1d2", "f2", "Rd1", "d1d1", 1000, "blunder", false, 90, null, EvalBefore: 1500, EvalAfter: 700),
+        };
+
+        var report = OpponentCalculator.Compute("Rival", games, plies, Baseline);
+
+        Assert.Equal(["Qh5", "Rd2"], report.YourBlunders.Select(m => m.San));
+        Assert.InRange(report.YourBlunders[0].Before!.Value, 75, 77);
+        Assert.InRange(report.YourBlunders[0].After!.Value, 4, 6);
+    }
+
+    [Fact]
+    public void Winning_chances_use_the_movers_side_for_black()
+    {
+        var black = new OpponentPly("g", 10, false, "Nd4", "b8d4", "f", null, null, 300, "blunder", false, null, null, EvalBefore: -200, EvalAfter: 150);
+
+        var (before, after) = black.Chances!.Value;
+
+        Assert.True(before > 50);   // -200 for White is good for Black
+        Assert.True(after < 50);
+    }
+
+    [Fact]
+    public void A_reply_that_is_the_engines_best_move_counts_as_punishing_even_when_its_recorded_loss_is_large()
+    {
+        var games = new[] { Game("g1", "2025-01-01", "white", "win") };
+        var plies = new[]
+        {
+            Ply("g1", 10, false, "Nd4", 300, "blunder"),
+            Ply("g1", 11, true, "Nxd4", 250, "mistake", best: "Nxd4"),   // noisy evaluations: still the best move
+        };
+
+        var report = OpponentCalculator.Compute("Rival", games, plies, Baseline);
+
+        Assert.True(Assert.Single(report.TheirBlunders).Punished);
+    }
+
+    [Fact]
     public void Opening_slips_are_found_for_each_side_within_the_first_fifteen_moves()
     {
         var games = new[] { Game("g1", "2025-01-01", "white", "win"), Game("g2", "2025-01-02", "white", "loss") };

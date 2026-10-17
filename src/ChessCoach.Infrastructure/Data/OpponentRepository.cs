@@ -29,6 +29,7 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections) : IO
             SELECT m.game_id AS GameId, m.ply AS Ply, m.is_mine AS IsMine, m.san AS San, m.uci AS Uci, m.fen_before AS Fen,
                    m.best_san AS BestSan, m.best_uci AS BestUci, COALESCE(m.cp_loss, 0) AS CpLoss, COALESCE(m.class, '') AS Class,
                    COALESCE(m.is_last, 0) AS IsLast, m.clk AS Clock,
+                   m.eval_before AS EvalBefore, m.eval_after AS EvalAfter,
                    (SELECT json_extract(n.note, '$.headline') FROM blunder_notes n WHERE n.game_id = m.game_id AND n.ply = m.ply) AS NoteHeadline
             FROM games g CROSS JOIN moves m ON m.game_id = g.id
             WHERE g.opponent = @name COLLATE NOCASE
@@ -40,7 +41,7 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections) : IO
             games.Select(g => new OpponentGame(g.GameId, g.Date, g.Time ?? "", g.Color ?? "", g.Result ?? "", g.Ending ?? "", g.MyRating, g.OppRating,
                 g.Family ?? "", g.Opening ?? "", g.Url ?? "", g.Opponent ?? "")).ToList(),
             plies.Select(p => new OpponentPly(p.GameId, p.Ply, p.IsMine != 0, p.San, p.Uci, p.Fen, p.BestSan, p.BestUci, p.CpLoss, p.Class,
-                p.IsLast != 0, p.Clock, p.NoteHeadline)).ToList());
+                p.IsLast != 0, p.Clock, p.NoteHeadline, p.EvalBefore, p.EvalAfter)).ToList());
     }
 
     public async Task<PhaseBaseline> LoadBaselineAsync(CancellationToken cancellationToken = default)
@@ -113,6 +114,10 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections) : IO
         public int IsLast { get; set; }
 
         public double? Clock { get; set; }
+
+        public int? EvalBefore { get; set; }
+
+        public int? EvalAfter { get; set; }
 
         public string? NoteHeadline { get; set; }
     }

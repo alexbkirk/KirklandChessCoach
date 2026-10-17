@@ -19,6 +19,8 @@ public sealed record OpponentGame(
 
 /// <summary>A move (either side) from a game against the opponent. <paramref name="Fen"/> is the position before it.</summary>
 /// <param name="Clock">Seconds left on the mover's clock after the move, when known.</param>
+/// <param name="EvalBefore">Centipawns from White's side before the move, when known.</param>
+/// <param name="EvalAfter">Centipawns from White's side after the move, when known.</param>
 /// <param name="NoteHeadline">The drill explanation's headline for your blunders that have one.</param>
 public sealed record OpponentPly(
     string GameId,
@@ -33,7 +35,16 @@ public sealed record OpponentPly(
     string Class,
     bool IsLast,
     double? Clock,
-    string? NoteHeadline);
+    string? NoteHeadline,
+    int? EvalBefore = null,
+    int? EvalAfter = null)
+{
+    /// <summary>Winning chances (0 to 100) for the mover before and after the move, when the evaluations are known.</summary>
+    public (double Before, double After)? Chances =>
+        EvalBefore is null || EvalAfter is null
+            ? null
+            : (WinChances.For(EvalBefore.Value, white: Ply % 2 == 1), WinChances.For(EvalAfter.Value, white: Ply % 2 == 1));
+}
 
 /// <summary>Average loss and blunder rate for one side in one phase, over a set of games.</summary>
 /// <param name="Moves">Moves counted (final moves of games are left out).</param>
@@ -54,8 +65,10 @@ public sealed record PhaseBaseline(IReadOnlyDictionary<string, PhaseRate> You, I
 public sealed record OpponentGameRow(OpponentGame Game, int MyBlunders, int TheirBlunders);
 
 /// <summary>A blunder (yours or theirs) on the opponent page.</summary>
+/// <param name="Before">The mover's winning chances before the move (0 to 100), or null when unknown.</param>
+/// <param name="After">The mover's winning chances after the move, or null when unknown.</param>
 /// <param name="Reply">The next move by the other side, for their blunders: whether you punished it.</param>
-/// <param name="Punished">For their blunders: your reply lost less than 100 centipawns, so you kept the gain.</param>
+/// <param name="Punished">For their blunders: your reply was the best move or lost less than 100 centipawns, so you kept the gain.</param>
 public sealed record OpponentMoment(
     OpponentGame Game,
     int Ply,
@@ -65,6 +78,8 @@ public sealed record OpponentMoment(
     int CpLoss,
     double? Clock,
     string? NoteHeadline,
+    double? Before = null,
+    double? After = null,
     string? Reply = null,
     string? ReplyBestSan = null,
     bool Punished = false);

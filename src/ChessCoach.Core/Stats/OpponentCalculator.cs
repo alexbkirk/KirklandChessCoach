@@ -63,9 +63,9 @@ public static class OpponentCalculator
 
         var yourBlunders = counted
             .Where(p => p.IsMine && p.Class == "blunder")
-            .OrderByDescending(p => p.CpLoss).ThenByDescending(p => byId[p.GameId].Date, StringComparer.Ordinal)
+            .OrderByDescending(Swing).ThenByDescending(p => p.CpLoss).ThenByDescending(p => byId[p.GameId].Date, StringComparer.Ordinal)
             .Take(MaxMoments)
-            .Select(p => new OpponentMoment(byId[p.GameId], p.Ply, p.San, p.Fen, p.BestSan, p.CpLoss, p.Clock, p.NoteHeadline))
+            .Select(p => new OpponentMoment(byId[p.GameId], p.Ply, p.San, p.Fen, p.BestSan, p.CpLoss, p.Clock, p.NoteHeadline, p.Chances?.Before, p.Chances?.After))
             .ToList();
 
         var theirBlunders = counted
@@ -73,10 +73,11 @@ public static class OpponentCalculator
             .Select(p =>
             {
                 var reply = byGame[p.GameId].FirstOrDefault(r => r.Ply == p.Ply + 1);
-                return new OpponentMoment(byId[p.GameId], p.Ply, p.San, p.Fen, p.BestSan, p.CpLoss, p.Clock, null,
-                    reply?.San, reply?.BestSan, Punished: reply is not null && reply.CpLoss < PunishedCp);
+                return new OpponentMoment(byId[p.GameId], p.Ply, p.San, p.Fen, p.BestSan, p.CpLoss, p.Clock, null, p.Chances?.Before, p.Chances?.After,
+                    reply?.San, reply?.BestSan, Punished: reply is not null && (reply.CpLoss < PunishedCp || reply.San == reply.BestSan));
             })
             .OrderBy(m => m.Punished)
+            .ThenByDescending(m => m.Before - m.After ?? 0)
             .ThenByDescending(m => m.CpLoss)
             .ThenByDescending(m => m.Game.Date, StringComparer.Ordinal)
             .ToList();
@@ -114,6 +115,9 @@ public static class OpponentCalculator
             Openings: openings,
             Endings: endings);
     }
+
+    /// <summary>Winning chances the mover lost with the move; 0 when the evaluations are unknown.</summary>
+    private static double Swing(OpponentPly p) => p.Chances is { } c ? c.Before - c.After : 0;
 
     /// <summary>Average loss and blunder share of the given moves (final moves of games already left out).</summary>
     public static PhaseRate Rate(IEnumerable<OpponentPly> moves)
