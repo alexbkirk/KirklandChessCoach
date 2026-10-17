@@ -11,11 +11,13 @@ from tagging import VAL, NAME
 MIN_GAIN = 2       # points of material a non-mating, non-checking motif must win
 LINE_PLIES = 6     # how much of the line counts towards the material gain
 ORDER = ["back_rank_mate", "smothered_mate", "mate", "double_check", "discovered_check", "fork", "discovered_attack",
-         "pin", "skewer", "removing_the_defender", "moved_defender", "hung_piece", "free_piece", "promotion"]
+         "pin", "skewer", "removing_the_defender", "moved_defender", "hung_piece", "ignored_threat", "lost_piece", "free_piece",
+         "promotion"]
 LABEL = {"back_rank_mate": "Back-rank mate", "smothered_mate": "Smothered mate", "mate": "Mating attack",
          "double_check": "Double check", "discovered_check": "Discovered check", "discovered_attack": "Discovered attack",
          "fork": "Fork", "pin": "Pin", "skewer": "Skewer", "removing_the_defender": "Removing the defender",
-         "moved_defender": "Moved defender", "hung_piece": "Hung piece", "free_piece": "Free piece", "promotion": "Promotion"}
+         "moved_defender": "Moved defender", "hung_piece": "Hung piece", "ignored_threat": "Ignored threat",
+         "lost_piece": "Lost piece", "free_piece": "Free piece", "promotion": "Promotion"}
 DIRECTIONS = {chess.ROOK: [(1, 0), (-1, 0), (0, 1), (0, -1)], chess.BISHOP: [(1, 1), (1, -1), (-1, 1), (-1, -1)]}
 DIRECTIONS[chess.QUEEN] = DIRECTIONS[chess.ROOK] + DIRECTIONS[chess.BISHOP]
 
@@ -184,7 +186,9 @@ def detect(board, line, attacker, me):
 
 
 def blunder_motifs(board, move, reply, me):
-    """What `move` (by `me`, from `board`) gave away to the opponent's `reply`: a moved defender or a hung piece."""
+    """What `move` (by `me`, from `board`) gave away to the opponent's `reply` when that reply takes a piece worth 3+:
+    the moved piece itself (hung piece), a piece it was guarding (moved defender), a piece that was already attacked
+    and left there (ignored threat), or another piece the move exposed (lost piece)."""
     if reply is None:
         return []
     after = board.copy(); after.push(move)
@@ -204,4 +208,15 @@ def blunder_motifs(board, move, reply, me):
         p = board.piece_at(move.from_square)
         return [{"k": "moved_defender", "l": LABEL["moved_defender"],
                  "d": f"your {NAME[p.piece_type]} on {chess.square_name(move.from_square)} was guarding {_piece(after, target, me)}; once it moved, {reply_san} took it"}]
-    return []
+    taker = after.piece_at(reply.from_square)
+    if not _loses(after, target, taker, me):
+        return []
+    if board.piece_at(reply.from_square) == taker and target in board.attacks(reply.from_square) and _loses(board, target, taker, me):
+        return [{"k": "ignored_threat", "l": LABEL["ignored_threat"],
+                 "d": f"{_piece(after, target, me)} was already attacked by their {NAME[taker.piece_type]} on {chess.square_name(reply.from_square)}, and {reply_san} takes it"}]
+    return [{"k": "lost_piece", "l": LABEL["lost_piece"], "d": f"{reply_san} takes {_piece(after, target, me)}"}]
+
+
+def _loses(board, sq, taker, me):
+    """Taking the piece on `sq` with `taker` wins material: it is undefended, or the taker is worth less."""
+    return not board.attackers(me, sq) or VAL[taker.piece_type] < VAL[board.piece_at(sq).piece_type]

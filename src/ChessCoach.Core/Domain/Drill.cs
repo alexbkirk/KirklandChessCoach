@@ -16,6 +16,7 @@ public enum DrillFormat
 /// <summary>A position from one of your games used by the drill.</summary>
 /// <param name="IsBlunder">True when the move was a blunder (one-move material loss); false for a sound move.</param>
 /// <param name="EvalBefore">Centipawns from White's point of view, as stored by the analysis.</param>
+/// <param name="Note">The explanation from analysis/explain_blunders.py, when one exists (blunders only).</param>
 public sealed record DrillPosition(
     string PositionId,
     string Fen,
@@ -29,7 +30,8 @@ public sealed record DrillPosition(
     bool IsBlunder,
     string Date,
     string Opponent,
-    string Url);
+    string Url,
+    CoachNote? Note = null);
 
 /// <summary>The result of one submission: which squares were right, missed or wrongly marked.</summary>
 public sealed record DrillAnswer(bool Ok, IReadOnlyList<string> Right, IReadOnlyList<string> Missing, IReadOnlyList<string> Extra);

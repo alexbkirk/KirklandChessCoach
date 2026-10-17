@@ -1,4 +1,4 @@
-"""Refresh the chess data (rapid games only): fetch new games, analyse them, tag blunders, regenerate coach notes.
+"""Refresh the chess data (rapid games only): fetch new games, analyse them, tag and explain blunders, regenerate coach notes.
 
 Usage: python -I refresh.py --data-dir <folder> [--user xkirke] [--skip-coach] [--progress jsonl]
 Incremental: only months from the latest stored game onward are downloaded, only rapid games not already in
@@ -76,6 +76,7 @@ db.close()
 if pending:
     run("analyze.py", "--threads", "4")
     run("tag_blunders.py", "--threads", "4")   # tags only blunders that have no tags yet
+    run("explain_blunders.py", "--threads", "4")   # explains only drill blunders that have no note yet
 if (new or pending) and not a.skip_coach:
     run("coach.py", "--top", "100")
 elif a.skip_coach:

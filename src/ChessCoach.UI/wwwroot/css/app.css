@@ -49,6 +49,11 @@ html, body {
     aspect-ratio: 1 / 1;
 }
 
+.drill-note {
+    border-left: 3px solid var(--mud-palette-secondary);
+    padding-left: 10px;
+}
+
 .focus-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
