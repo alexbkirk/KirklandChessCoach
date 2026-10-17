@@ -46,6 +46,26 @@ public sealed class OpponentRepositoryTests
     }
 
     [Fact]
+    public async Task Names_with_spaces_quotes_and_symbols_are_matched_exactly_and_safely()
+    {
+        using var db = new TempDatabase();
+        await db.Migrations.MigrateAsync();
+        await db.ExecuteAsync(
+            """
+            INSERT INTO games(id, url, date, time, color, result, ending, myRating, oppRating, opponent, family, opening) VALUES
+              ('s1', 'u1', '2025-01-01', '10:00:00', 'white', 'win', 'resignation', 1000, 1000, 'O''Brien_99 x', 'Pirc Defense', 'Pirc Defense'),
+              ('s2', 'u2', '2025-01-02', '10:00:00', 'white', 'win', 'resignation', 1000, 1000, 'OBrien_99 x', 'Pirc Defense', 'Pirc Defense');
+            """);
+        var repo = new OpponentRepository(db.Connections);
+
+        var (games, _) = await repo.LoadAsync("o'brien_99 X");
+        var (injection, _) = await repo.LoadAsync("x' OR '1'='1");
+
+        Assert.Equal(["s1"], games.Select(g => g.GameId));
+        Assert.Empty(injection);
+    }
+
+    [Fact]
     public async Task The_baseline_covers_all_games_per_side_and_phase_without_final_moves()
     {
         using var db = new TempDatabase();

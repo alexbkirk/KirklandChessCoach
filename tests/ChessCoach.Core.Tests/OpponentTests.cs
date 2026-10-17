@@ -133,12 +133,36 @@ public sealed class OpponentTests
     [Fact]
     public void Winning_chances_use_the_movers_side_for_black()
     {
-        var black = new OpponentPly("g", 10, false, "Nd4", "b8d4", "f", null, null, 300, "blunder", false, null, null, EvalBefore: -200, EvalAfter: 150);
+        var black = new OpponentPly("g", 10, false, "Nd4", "b8d4", "fen b KQkq -", null, null, 300, "blunder", false, null, null, EvalBefore: -200, EvalAfter: 150);
 
         var (before, after) = black.Chances!.Value;
 
         Assert.True(before > 50);   // -200 for White is good for Black
         Assert.True(after < 50);
+    }
+
+    [Fact]
+    public void The_mover_comes_from_the_position_not_the_move_number()
+    {
+        // Ply 10 would normally be Black's move, but this game starts with Black to move, so White moves on even plies.
+        var white = new OpponentPly("g", 10, false, "e4", "e2e4", "fen w KQkq -", null, null, 0, "best", false, null, null, EvalBefore: 200, EvalAfter: 200);
+
+        Assert.True(white.Chances!.Value.Before > 50);
+        Assert.Null(new OpponentPly("g", 10, false, "e4", "e2e4", "fen w KQkq -", null, null, 0, "best", false, null, null).Chances);
+    }
+
+    [Fact]
+    public void A_game_with_no_analysed_moves_still_lists_with_no_blunders_or_phase_rates()
+    {
+        var games = new[] { Game("g1", "2025-01-01", "white", "draw", ending: "agreement") };
+
+        var report = OpponentCalculator.Compute("Rival", games, [], Baseline);
+
+        Assert.Equal(1, report.Record.Draws);
+        Assert.Equal(new OpponentGameRow(games[0], 0, 0), Assert.Single(report.Games));
+        Assert.All(report.Phases, p => Assert.Equal(PhaseRate.Empty, p.You));
+        Assert.Empty(report.YourBlunders);
+        Assert.Empty(report.TheirBlunders);
     }
 
     [Fact]

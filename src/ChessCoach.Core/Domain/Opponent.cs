@@ -39,11 +39,19 @@ public sealed record OpponentPly(
     int? EvalBefore = null,
     int? EvalAfter = null)
 {
-    /// <summary>Winning chances (0 to 100) for the mover before and after the move, when the evaluations are known.</summary>
-    public (double Before, double After)? Chances =>
-        EvalBefore is null || EvalAfter is null
-            ? null
-            : (WinChances.For(EvalBefore.Value, white: Ply % 2 == 1), WinChances.For(EvalAfter.Value, white: Ply % 2 == 1));
+    /// <summary>
+    /// Winning chances (0 to 100) for the mover before and after the move, when the evaluations are known.
+    /// The mover is read from the position's side to move, so games from a custom start position are right too.
+    /// </summary>
+    public (double Before, double After)? Chances
+    {
+        get
+        {
+            if (EvalBefore is null || EvalAfter is null) return null;
+            var white = !Fen.Contains(" b ", StringComparison.Ordinal);
+            return (WinChances.For(EvalBefore.Value, white), WinChances.For(EvalAfter.Value, white));
+        }
+    }
 }
 
 /// <summary>Average loss and blunder rate for one side in one phase, over a set of games.</summary>
