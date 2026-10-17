@@ -3,7 +3,7 @@
 @inject StatsService StatsService
 
 <div class="d-flex align-center gap-4 mb-3 flex-wrap">
-    <MudNumericField T="int" Label="Minimum games" Value="_minGames" ValueChanged="SetMinGamesAsync"
+    <MudNumericField T="int" Label="Minimum games" Value="_minGames" ValueChanged="SetMinGames"
                      Min="1" Max="500" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" />
     <MudText Typo="Typo.caption">@(_rows?.Count ?? 0) openings. Click a column heading to sort.</MudText>
 </div>
@@ -56,7 +56,9 @@ else
 
     [Parameter] public string? ColorFilter { get; set; }
 
+    private IReadOnlyList<OpeningRow>? _all;
     private IReadOnlyList<OpeningRow>? _rows;
+    private int _loadVersion;
     private string? _error;
     private int _minGames = OpeningsTableCalculator.DefaultMinGames;
     private bool _loaded;
@@ -70,23 +72,38 @@ else
         await LoadAsync();
     }
 
-    private async Task SetMinGamesAsync(int value)
+    /// <summary>The minimum only filters rows already loaded, so no database read and no chance of results arriving out of order.</summary>
+    private void SetMinGames(int value)
     {
         _minGames = Math.Max(1, value);
-        await LoadAsync();
+        ApplyMinGames();
+    }
+
+    private void ApplyMinGames()
+    {
+        _rows = _all?.Where(r => r.Record.Games >= _minGames).ToList();
     }
 
     private async Task LoadAsync()
     {
+        var version = ++_loadVersion;
+        var color = ColorFilter;
         try
         {
-            _rows = await Task.Run(() => StatsService.GetOpeningsAsync(ColorFilter, _minGames));
+            var all = await Task.Run(() => StatsService.GetOpeningsAsync(color, minGames: 1));
+            if (version != _loadVersion) return;
+            _all = all;
+            ApplyMinGames();
             _loaded = true;
-            _loadedFor = ColorFilter;
+            _loadedFor = color;
             _error = null;
         }
         catch (Exception ex)
         {
+            if (version != _loadVersion) return;
+            _all = null;
+            _rows = null;
+            _loaded = false;
             _error = ex.Message;
         }
     }
