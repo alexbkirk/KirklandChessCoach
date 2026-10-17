@@ -9,22 +9,18 @@
     private IJSObjectReference? _module;
     private IJSObjectReference? _board;
     private DotNetObjectReference<ChessBoard>? _self;
+    private bool _ready;
 
     /// <summary>FEN of the position to show.</summary>
     [Parameter, EditorRequired] public string Fen { get; set; } = "";
 
-    /// <summary>Legal destinations: from-square to list of to-squares (chess.js output, computed by the caller).</summary>
-    [Parameter] public IReadOnlyDictionary<string, string[]> Destinations { get; set; } = new Dictionary<string, string[]>();
-
-    /// <summary>Colour allowed to move ("white" or "black"). Null or empty = nothing movable.</summary>
+    /// <summary>Colour the user may move: "white" or "black". Null means the board is view-only.</summary>
     [Parameter] public string? MovableColor { get; set; }
 
     [Parameter] public string Orientation { get; set; } = "white";
 
-    /// <summary>Raised with the UCI move (e.g. "e2e4") when the user completes a move.</summary>
-    [Parameter] public EventCallback<string> OnMove { get; set; }
-
-    private bool _ready;
+    /// <summary>Raised when the user completes a legal move, with its UCI (e.g. "e2e4") and SAN (e.g. "Nf3").</summary>
+    [Parameter] public EventCallback<BoardMove> OnMove { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -36,7 +32,6 @@
             fen = Fen,
             orientation = Orientation,
             movableColor = MovableColor,
-            dests = Destinations,
         });
         _ready = true;
     }
@@ -45,20 +40,33 @@
     {
         if (_ready && _board is not null)
         {
-            await _board.InvokeVoidAsync("setPosition", Fen, Destinations, MovableColor, Orientation);
+            await _board.InvokeVoidAsync("setPosition", Fen, MovableColor, Orientation);
+        }
+    }
+
+    /// <summary>Puts the board back to <see cref="Fen"/>, undoing any move the user made on screen.</summary>
+    public async Task ResetAsync()
+    {
+        if (_ready && _board is not null)
+        {
+            await _board.InvokeVoidAsync("setPosition", Fen, MovableColor, Orientation);
         }
     }
 
     [JSInvokable("OnMove")]
-    public async Task HandleMove(string uci)
+    public async Task HandleMove(string uci, string san)
     {
-        if (OnMove.HasDelegate) await OnMove.InvokeAsync(uci);
+        if (OnMove.HasDelegate) await OnMove.InvokeAsync(new BoardMove(uci, san));
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_board is not null) await _board.InvokeVoidAsync("destroy");
-        if (_board is not null) await _board.DisposeAsync();
+        if (_board is not null)
+        {
+            await _board.InvokeVoidAsync("destroy");
+            await _board.DisposeAsync();
+        }
+
         if (_module is not null) await _module.DisposeAsync();
         _self?.Dispose();
     }

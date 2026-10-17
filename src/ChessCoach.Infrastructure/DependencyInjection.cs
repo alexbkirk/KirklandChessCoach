@@ -1,4 +1,5 @@
 using ChessCoach.Core.Abstractions;
+using ChessCoach.Core.Training;
 using ChessCoach.Infrastructure.Data;
 using ChessCoach.Infrastructure.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -16,6 +17,8 @@ public static class DependencyInjection
         services.AddSingleton<MigrationRunner>();
         services.AddSingleton<IGameRepository, GameRepository>();
         services.AddSingleton<IDiagnosticsService, DiagnosticsService>();
+        services.AddSingleton<IPuzzleRepository, PuzzleRepository>();
+        services.AddSingleton<PuzzleService>();
         return services;
     }
 }

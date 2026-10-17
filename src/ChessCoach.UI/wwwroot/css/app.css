@@ -19,3 +19,25 @@ html, body {
     color: #fff;
     margin-left: 0.5rem;
 }
+
+.puzzle-layout {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.puzzle-board {
+    flex: 0 1 520px;
+    min-width: 280px;
+}
+
+.puzzle-side {
+    flex: 1 1 320px;
+    min-width: 280px;
+}
+
+.puzzle-tips {
+    margin: 4px 0 0;
+    padding-left: 20px;
+}
