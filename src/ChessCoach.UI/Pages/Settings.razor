@@ -1,9 +1,44 @@
 @page "/settings"
 @inject IDiagnosticsService Diagnostics
+@inject IApiKeyStore ApiKeys
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+
+<MudPaper Class="pa-4 mb-6" Style="max-width:640px">
+    <MudText Typo="Typo.h6">AI coach</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3">
+        The coach uses an Anthropic API key. It is saved only on this computer, encrypted for your Windows account
+        (in %LOCALAPPDATA%\ChessCoach), never in the database, the settings file or the repository.
+    </MudText>
+    @if (_keyEnding is not null)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">A key is saved (ends in …@_keyEnding).</MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">No key saved yet.</MudAlert>
+    }
+    <MudTextField T="string" @bind-Value="_newKey" Label="@(_keyEnding is null ? "API key" : "Replace key")" InputType="InputType.Password"
+                  Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" autocomplete="off" />
+    @if (!string.IsNullOrWhiteSpace(_newKey) && !_newKey.Trim().StartsWith("sk-ant-", StringComparison.Ordinal))
+    {
+        <MudText Typo="Typo.caption" Color="Color.Warning">Anthropic keys usually start with "sk-ant-". Check you pasted the whole key.</MudText>
+    }
+    @if (_keyMessage is not null)
+    {
+        <MudText Typo="Typo.caption" Class="d-block mt-1">@_keyMessage</MudText>
+    }
+    <div class="d-flex gap-2 mt-3">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@string.IsNullOrWhiteSpace(_newKey)" OnClick="SaveKeyAsync">Save key</MudButton>
+        @if (_keyEnding is not null)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="RemoveKeyAsync">Remove key</MudButton>
+        }
+    </div>
+</MudPaper>
+
 <MudText Typo="Typo.h6" Class="mb-2">Diagnostics</MudText>
 
 @if (_checks is null)
@@ -33,7 +68,44 @@ else
 @code {
     private IReadOnlyList<DiagnosticCheck>? _checks;
 
-    protected override Task OnInitializedAsync() => RunAsync();
+    private string? _keyEnding;
+    private string? _newKey;
+    private string? _keyMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKeyAsync();
+        await RunAsync();
+    }
+
+    private async Task LoadKeyAsync()
+    {
+        var key = await ApiKeys.GetAsync();
+        _keyEnding = key is null ? null : key.Length <= 4 ? key : key[^4..];
+    }
+
+    private async Task SaveKeyAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newKey)) return;
+        try
+        {
+            await ApiKeys.SaveAsync(_newKey);
+            _newKey = null;
+            _keyMessage = "Saved.";
+            await LoadKeyAsync();
+        }
+        catch (Exception ex)
+        {
+            _keyMessage = $"Could not save the key: {ex.Message}";
+        }
+    }
+
+    private async Task RemoveKeyAsync()
+    {
+        await ApiKeys.RemoveAsync();
+        _keyMessage = "Key removed.";
+        await LoadKeyAsync();
+    }
 
     private async Task RunAsync()
     {

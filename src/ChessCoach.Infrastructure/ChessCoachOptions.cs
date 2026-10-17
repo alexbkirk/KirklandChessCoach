@@ -13,6 +13,10 @@ public sealed class ChessCoachOptions
     /// <summary>Folder with the Python analysis scripts. Resolved at startup when not set.</summary>
     public string? AnalysisDirectory { get; set; }
 
+    /// <summary>Per-user folder for secrets such as the AI coach's API key; outside the data folder and the repository.</summary>
+    public string SecretsDirectory { get; set; } =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ChessCoach");
+
     public string DatabasePath => Path.Combine(DataDirectory, DatabaseFileName);
 
     public string EngineDirectory => Path.Combine(DataDirectory, "engine");
