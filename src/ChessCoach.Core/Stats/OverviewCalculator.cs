@@ -54,7 +54,7 @@ public static class OverviewCalculator
             Rating: chosen.Select(g => new RatingPoint(g.Date, g.MyRating)).ToList());
     }
 
-    private static Record RecordOf(IReadOnlyList<StatsGame> games) => new(
+    public static Record RecordOf(IReadOnlyList<StatsGame> games) => new(
         Wins: games.Count(g => g.Result == "win"),
         Draws: games.Count(g => g.Result == "draw"),
         Losses: games.Count(g => g.Result == "loss"));

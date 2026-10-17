@@ -1,0 +1,118 @@
+@using System.Globalization
+@using ChessCoach.Core.Stats
+@inject StatsService StatsService
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_overview is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <div class="kpis mb-4">
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games</MudText><MudText Typo="Typo.h5">@_overview.Total.Games.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate</MudText><MudText Typo="Typo.h5">@Percent(_overview.Total.WinPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Record (W-D-L)</MudText><MudText Typo="Typo.h5">@_overview.Total.Wins-@_overview.Total.Draws-@_overview.Total.Losses</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Peak rating</MudText><MudText Typo="Typo.h5">@(_overview.PeakRating?.ToString(CultureInfo.InvariantCulture) ?? "–")</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Latest rating</MudText><MudText Typo="Typo.h5">@(_overview.LatestRating?.ToString(CultureInfo.InvariantCulture) ?? "–")</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Average length</MudText><MudText Typo="Typo.h5">@Math.Round(_overview.AverageMoves).ToString(CultureInfo.InvariantCulture) moves</MudText></MudPaper>
+    </div>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6">Rating over time</MudText>
+        @if (_overview.Rating.Count < 2)
+        {
+            <MudText Typo="Typo.body2">Not enough games to draw a line yet.</MudText>
+        }
+        else
+        {
+            <svg class="rating-chart" viewBox="0 0 1000 260" preserveAspectRatio="none">
+                <polyline points="@_line" fill="none" stroke="var(--mud-palette-primary)" stroke-width="2" vector-effect="non-scaling-stroke" />
+            </svg>
+            <MudText Typo="Typo.caption">@_overview.Rating[0].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) to @_overview.Rating[^1].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) · lowest @_lowest, highest @_overview.PeakRating</MudText>
+        }
+    </MudPaper>
+
+    <div class="stats-grid">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Results by colour</MudText>
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Colour</th><th class="text-right">Games</th><th class="text-right">Win %</th><th>W / D / L</th></tr></thead>
+                <tbody>
+                    @foreach (var split in _overview.ByColor.Where(s => s.Record.Games > 0))
+                    {
+                        <tr><td>@split.Label</td><td class="text-right">@split.Record.Games</td><td class="text-right">@Percent(split.Record.WinPercent)</td><td>@split.Record.Wins / @split.Record.Draws / @split.Record.Losses</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Results by time control</MudText>
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Time control</th><th class="text-right">Games</th><th class="text-right">Win %</th><th>W / D / L</th></tr></thead>
+                <tbody>
+                    @foreach (var split in _overview.ByTimeControl)
+                    {
+                        <tr><td>@split.Label</td><td class="text-right">@split.Record.Games</td><td class="text-right">@Percent(split.Record.WinPercent)</td><td>@split.Record.Wins / @split.Record.Draws / @split.Record.Losses</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    [Parameter] public string? ColorFilter { get; set; }
+
+    private Overview? _overview;
+    private string? _error;
+    private bool _loaded;
+    private string? _loadedFor;
+    private string _line = "";
+    private int _lowest;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loaded && _loadedFor == ColorFilter) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _overview = await Task.Run(() => StatsService.GetOverviewAsync(ColorFilter));
+            _loaded = true;
+            _loadedFor = ColorFilter;
+            _line = ChartLine(_overview.Rating);
+            _lowest = _overview.Rating.Count == 0 ? 0 : _overview.Rating.Min(p => p.Rating);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    /// <summary>Scales the rating history into the 1000x260 chart: x by date, y by rating (with padding).</summary>
+    private static string ChartLine(IReadOnlyList<RatingPoint> points)
+    {
+        if (points.Count < 2) return "";
+        var first = points[0].Date.ToDateTime(TimeOnly.MinValue);
+        var span = Math.Max(1, (points[^1].Date.ToDateTime(TimeOnly.MinValue) - first).TotalDays);
+        var low = points.Min(p => p.Rating) - 25;
+        var high = points.Max(p => p.Rating) + 25;
+        var range = Math.Max(1, high - low);
+        return string.Join(" ", points.Select(p =>
+        {
+            var x = (p.Date.ToDateTime(TimeOnly.MinValue) - first).TotalDays / span * 1000;
+            var y = 255 - (p.Rating - low) / (double)range * 240;
+            return $"{x.ToString("0.#", CultureInfo.InvariantCulture)},{y.ToString("0.#", CultureInfo.InvariantCulture)}";
+        }));
+    }
+
+    private static string Percent(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+}

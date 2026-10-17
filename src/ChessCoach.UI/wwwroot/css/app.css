@@ -112,3 +112,20 @@ html, body {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
 }
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.wdl-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: rgba(128, 128, 128, 0.25);
+}
+
+.wdl-w { background: #2e8b57; }
+.wdl-d { background: #9aa0a6; }
+.wdl-l { background: #c8553d; }
