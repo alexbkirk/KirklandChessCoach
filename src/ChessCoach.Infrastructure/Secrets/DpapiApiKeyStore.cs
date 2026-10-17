@@ -21,17 +21,17 @@ public sealed class DpapiApiKeyStore(IOptions<ChessCoachOptions> options) : IApi
 
     private string FilePath => Path.Combine(options.Value.SecretsDirectory, FileName);
 
-    public async Task<string?> GetAsync(CancellationToken cancellationToken = default)
+    public async Task<StoredApiKey> GetAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(FilePath)) return null;
+        if (!File.Exists(FilePath)) return StoredApiKey.None;
         var encrypted = await File.ReadAllBytesAsync(FilePath, cancellationToken);
         try
         {
-            return Encoding.UTF8.GetString(ProtectedData.Unprotect(encrypted, Entropy, DataProtectionScope.CurrentUser));
+            return StoredApiKey.Present(Encoding.UTF8.GetString(ProtectedData.Unprotect(encrypted, Entropy, DataProtectionScope.CurrentUser)));
         }
         catch (CryptographicException)
         {
-            return null;   // saved by another Windows user or computer: treat as no key
+            return StoredApiKey.Unreadable;   // saved by another Windows user or computer, or damaged
         }
     }
 
@@ -42,8 +42,15 @@ public sealed class DpapiApiKeyStore(IOptions<ChessCoachOptions> options) : IApi
         Directory.CreateDirectory(options.Value.SecretsDirectory);
         var encrypted = ProtectedData.Protect(Encoding.UTF8.GetBytes(trimmed), Entropy, DataProtectionScope.CurrentUser);
         var temp = FilePath + ".tmp";
-        await File.WriteAllBytesAsync(temp, encrypted, cancellationToken);
-        File.Move(temp, FilePath, overwrite: true);
+        try
+        {
+            await File.WriteAllBytesAsync(temp, encrypted, cancellationToken);
+            File.Move(temp, FilePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temp)) File.Delete(temp);   // only left behind when the write or move failed
+        }
     }
 
     public Task RemoveAsync(CancellationToken cancellationToken = default)

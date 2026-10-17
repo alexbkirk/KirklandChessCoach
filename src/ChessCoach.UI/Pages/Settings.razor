@@ -1,6 +1,7 @@
-@page "/settings"
+﻿@page "/settings"
 @inject IDiagnosticsService Diagnostics
-@inject IApiKeyStore ApiKeys
+@using ChessCoach.Core.Settings
+@inject ApiKeySettingsService KeySettings
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
@@ -12,27 +13,35 @@
         The coach uses an Anthropic API key. It is saved only on this computer, encrypted for your Windows account
         (in %LOCALAPPDATA%\ChessCoach), never in the database, the settings file or the repository.
     </MudText>
-    @if (_keyEnding is not null)
+    @if (_key is null)
     {
-        <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">A key is saved (ends in …@_keyEnding).</MudAlert>
+        <MudProgressLinear Indeterminate="true" Class="mb-3" />
+    }
+    else if (_key.State == StoredApiKeyState.Present)
+    {
+        <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">A key is saved (ends in …@_key.Ending).</MudAlert>
+    }
+    else if (_key.State == StoredApiKeyState.Unreadable)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">Saved key can't be read on this account.</MudAlert>
     }
     else
     {
         <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">No key saved yet.</MudAlert>
     }
-    <MudTextField T="string" @bind-Value="_newKey" Label="@(_keyEnding is null ? "API key" : "Replace key")" InputType="InputType.Password"
+    <MudTextField T="string" @bind-Value="_newKey" Label="@(_key?.HasFile == true ? "Replace key" : "API key")" InputType="InputType.Password"
                   Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" autocomplete="off" />
-    @if (!string.IsNullOrWhiteSpace(_newKey) && !_newKey.Trim().StartsWith("sk-ant-", StringComparison.Ordinal))
+    @if (!ApiKeySettingsService.LooksLikeAnthropicKey(_newKey))
     {
-        <MudText Typo="Typo.caption" Color="Color.Warning">Anthropic keys usually start with "sk-ant-". Check you pasted the whole key.</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Warning">Anthropic keys usually start with "@ApiKeySettingsService.KeyPrefix". Check you pasted the whole key.</MudText>
     }
-    @if (_keyMessage is not null)
+    @if (_key?.Message is not null)
     {
-        <MudText Typo="Typo.caption" Class="d-block mt-1">@_keyMessage</MudText>
+        <MudText Typo="Typo.caption" Class="d-block mt-1">@_key.Message</MudText>
     }
     <div class="d-flex gap-2 mt-3">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@string.IsNullOrWhiteSpace(_newKey)" OnClick="SaveKeyAsync">Save key</MudButton>
-        @if (_keyEnding is not null)
+        @if (_key?.HasFile == true)
         {
             <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="RemoveKeyAsync">Remove key</MudButton>
         }
@@ -68,60 +77,22 @@ else
 @code {
     private IReadOnlyList<DiagnosticCheck>? _checks;
 
-    private string? _keyEnding;
+    private ApiKeyView? _key;
     private string? _newKey;
-    private string? _keyMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadKeyAsync();
+        _key = await KeySettings.LoadAsync();
         await RunAsync();
-    }
-
-    private async Task LoadKeyAsync()
-    {
-        try
-        {
-            var key = await ApiKeys.GetAsync();
-            _keyEnding = key is null ? null : key.Length <= 4 ? key : key[^4..];
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _keyEnding = null;
-            _keyMessage = $"Could not read the saved key: {ex.Message}";
-        }
     }
 
     private async Task SaveKeyAsync()
     {
-        if (string.IsNullOrWhiteSpace(_newKey)) return;
-        try
-        {
-            await ApiKeys.SaveAsync(_newKey);
-            _newKey = null;
-            _keyMessage = "Saved.";
-            await LoadKeyAsync();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or ArgumentException)
-        {
-            _keyMessage = $"Could not save the key: {ex.Message}";
-        }
+        _key = await KeySettings.SaveAsync(_newKey);
+        if (_key.Succeeded) _newKey = null;
     }
 
-    private async Task RemoveKeyAsync()
-    {
-        try
-        {
-            await ApiKeys.RemoveAsync();
-            _keyMessage = "Key removed.";
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _keyMessage = $"Could not remove the key: {ex.Message}";
-        }
-
-        await LoadKeyAsync();
-    }
+    private async Task RemoveKeyAsync() => _key = await KeySettings.RemoveAsync();
 
     private async Task RunAsync()
     {
