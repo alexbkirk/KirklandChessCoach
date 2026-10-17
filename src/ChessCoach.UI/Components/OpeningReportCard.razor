@@ -33,7 +33,7 @@ else
                 {
                     <MudPaper Class="pa-3 mb-3" Outlined="true">
                         <div class="d-flex justify-space-between align-center mb-1">
-                            <MudText Typo="Typo.subtitle2"><b>@family.Family</b></MudText>
+                            <MudText Typo="Typo.subtitle2"><a href="@OpeningLinks.Family(color.Color, family.Family)"><b>@family.Family</b></a></MudText>
                             <MudChip T="string" Size="Size.Small" Color="@VerdictColor(family.Verdict)">@family.Verdict · @family.VerdictReason</MudChip>
                         </div>
                         <MudText Typo="Typo.body2" Class="mb-2">
@@ -47,7 +47,7 @@ else
                                 @foreach (var variation in family.Variations)
                                 {
                                     <tr>
-                                        <td>@VariationName(family.Family, variation.Opening)</td>
+                                        <td><a href="@OpeningLinks.Variation(color.Color, family.Family, variation.Opening)">@VariationName(family.Family, variation.Opening)</a></td>
                                         <td class="text-right">@variation.Stats.Games</td>
                                         <td class="text-right">@Percent(variation.Stats.WinPercent)</td>
                                         <td class="text-right">@SlipText(variation.Stats)</td>
@@ -66,6 +66,7 @@ else
         <b>Eval @@10</b> is Stockfish's evaluation from your side after your 10th move.
         <b>Fix</b>: at least 20 games, win rate 3 points below your average, or Eval @@10 of -0.5 or worse.
         <b>Keep</b>: at least 20 games, win rate 3 points above your average, and Eval @@10 not negative. Otherwise <b>Watch</b>.
+        Click an opening or variation to go through your usual line and practise the positions where you go wrong.
     </MudText>
 }
 

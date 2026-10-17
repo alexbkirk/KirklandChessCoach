@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddSingleton<WeeklyFocusService>();
         services.AddSingleton<IOpeningRepository, OpeningRepository>();
         services.AddSingleton<OpeningReportService>();
+        services.AddSingleton<OpeningVariationService>();
         services.AddSingleton<IStatsRepository, StatsRepository>();
         services.AddSingleton<StatsService>();
         // Windows only: the desktop host is Windows-only, and the Settings page needs this service.
