@@ -10,4 +10,10 @@ public sealed class StatsService(IStatsRepository repository)
         var games = await repository.LoadGamesAsync(cancellationToken);
         return OverviewCalculator.Compute(games, color);
     }
+
+    public async Task<IReadOnlyList<OpeningRow>> GetOpeningsAsync(string? color = null, int minGames = OpeningsTableCalculator.DefaultMinGames, CancellationToken cancellationToken = default)
+    {
+        var games = await repository.LoadGamesAsync(cancellationToken);
+        return OpeningsTableCalculator.Compute(games, color, minGames);
+    }
 }

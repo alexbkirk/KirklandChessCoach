@@ -1,0 +1,131 @@
+@using System.Globalization
+@using ChessCoach.Core.Stats
+@inject StatsService StatsService
+
+<div class="d-flex align-center gap-4 mb-3 flex-wrap">
+    <MudNumericField T="int" Label="Minimum games" Value="_minGames" ValueChanged="SetMinGamesAsync"
+                     Min="1" Max="500" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width:180px" />
+    <MudText Typo="Typo.caption">@(_rows?.Count ?? 0) openings. Click a column heading to sort.</MudText>
+</div>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_rows is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_rows.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No opening has @_minGames or more games for this filter. Lower the minimum.</MudAlert>
+}
+else
+{
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th class="sortable" @onclick="SortByName">Opening @Arrow(SortKey.Name)</th>
+                <th class="sortable text-right" @onclick="SortByGames">Games @Arrow(SortKey.Games)</th>
+                <th class="sortable text-right" @onclick="SortByWin">Win % @Arrow(SortKey.Win)</th>
+                <th>W / D / L</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Sorted())
+            {
+                <tr>
+                    <td>@row.Family</td>
+                    <td class="text-right">@row.Record.Games</td>
+                    <td class="text-right">@row.Record.WinPercent.ToString("0.0", CultureInfo.InvariantCulture)%</td>
+                    <td style="min-width:160px" title="@row.Record.Wins W, @row.Record.Draws D, @row.Record.Losses L">
+                        <div class="wdl-bar">
+                            <span class="wdl-w" style="width:@Share(row.Record.Wins, row.Record.Games)%"></span>
+                            <span class="wdl-d" style="width:@Share(row.Record.Draws, row.Record.Games)%"></span>
+                            <span class="wdl-l" style="width:@Share(row.Record.Losses, row.Record.Games)%"></span>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+}
+
+@code {
+    private enum SortKey { Name, Games, Win }
+
+    [Parameter] public string? ColorFilter { get; set; }
+
+    private IReadOnlyList<OpeningRow>? _rows;
+    private string? _error;
+    private int _minGames = OpeningsTableCalculator.DefaultMinGames;
+    private bool _loaded;
+    private string? _loadedFor;
+    private SortKey _sortKey = SortKey.Games;
+    private bool _descending = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loaded && _loadedFor == ColorFilter) return;
+        await LoadAsync();
+    }
+
+    private async Task SetMinGamesAsync(int value)
+    {
+        _minGames = Math.Max(1, value);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _rows = await Task.Run(() => StatsService.GetOpeningsAsync(ColorFilter, _minGames));
+            _loaded = true;
+            _loadedFor = ColorFilter;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void SortByName() => Sort(SortKey.Name);
+
+    private void SortByGames() => Sort(SortKey.Games);
+
+    private void SortByWin() => Sort(SortKey.Win);
+
+    /// <summary>Clicking the active column flips the direction; a new column starts descending (names ascending).</summary>
+    private void Sort(SortKey key)
+    {
+        if (_sortKey == key)
+        {
+            _descending = !_descending;
+            return;
+        }
+
+        _sortKey = key;
+        _descending = key != SortKey.Name;
+    }
+
+    private IEnumerable<OpeningRow> Sorted()
+    {
+        IEnumerable<OpeningRow> rows = _rows ?? [];
+        return (_sortKey, _descending) switch
+        {
+            (SortKey.Name, false) => rows.OrderBy(r => r.Family, StringComparer.Ordinal),
+            (SortKey.Name, true) => rows.OrderByDescending(r => r.Family, StringComparer.Ordinal),
+            (SortKey.Games, false) => rows.OrderBy(r => r.Record.Games).ThenBy(r => r.Family, StringComparer.Ordinal),
+            (SortKey.Games, true) => rows.OrderByDescending(r => r.Record.Games).ThenBy(r => r.Family, StringComparer.Ordinal),
+            (SortKey.Win, false) => rows.OrderBy(r => r.Record.WinPercent).ThenBy(r => r.Family, StringComparer.Ordinal),
+            _ => rows.OrderByDescending(r => r.Record.WinPercent).ThenBy(r => r.Family, StringComparer.Ordinal),
+        };
+    }
+
+    private string Arrow(SortKey key) => _sortKey != key ? "" : _descending ? "▼" : "▲";
+
+    private static string Share(int part, int total) =>
+        (total == 0 ? 0 : 100.0 * part / total).ToString("0.#", CultureInfo.InvariantCulture);
+}
