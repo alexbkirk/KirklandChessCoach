@@ -49,7 +49,7 @@
         }
     }
 
-    [JSInvokable]
+    [JSInvokable("OnMove")]
     public async Task HandleMove(string uci)
     {
         if (OnMove.HasDelegate) await OnMove.InvokeAsync(uci);

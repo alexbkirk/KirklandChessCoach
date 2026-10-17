@@ -22,7 +22,8 @@ else
     </MudPaper>
     <MudPaper Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-2">Board check</MudText>
-        <ChessBoard Fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" MovableColor="white" Destinations="_startDests" />
+        <ChessBoard Fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" MovableColor="white" Destinations="_startDests" OnMove="m => _lastMove = m" />
+        <MudText Typo="Typo.caption" Class="mt-2" id="last-move">Last move: @(_lastMove ?? "none")</MudText>
     </MudPaper>
     <MudAlert Severity="Severity.Info">
         The coaching features (puzzles, daily drill, weekly focus, opening report) arrive in step 2 of the build plan.
@@ -33,6 +34,7 @@ else
     private DatabaseSummary? _summary;
     private readonly Dictionary<string, string[]> _startDests = new() { ["e2"] = ["e3", "e4"], ["g1"] = ["f3", "h3"] };
     private string? _error;
+    private string? _lastMove;
 
     protected override async Task OnInitializedAsync()
     {

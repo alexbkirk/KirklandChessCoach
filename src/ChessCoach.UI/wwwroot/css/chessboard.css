@@ -5,3 +5,11 @@
     max-height: 520px;
     position: relative;
 }
+
+/* chessground tags pieces and coordinates with the classes "white"/"black", which collide with MudBlazor's
+   colour utilities (.white/.black { background-color: ... !important }). A more specific !important rule wins. */
+.cg-wrap piece,
+.cg-wrap coords,
+.cg-wrap coord {
+    background-color: transparent !important;
+}
