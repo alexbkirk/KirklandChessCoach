@@ -1,4 +1,5 @@
 using ChessCoach.Core.Abstractions;
+using ChessCoach.Core.Stats;
 using ChessCoach.Core.Training;
 using ChessCoach.Infrastructure.Data;
 using ChessCoach.Infrastructure.Diagnostics;
@@ -25,6 +26,8 @@ public static class DependencyInjection
         services.AddSingleton<WeeklyFocusService>();
         services.AddSingleton<IOpeningRepository, OpeningRepository>();
         services.AddSingleton<OpeningReportService>();
+        services.AddSingleton<IStatsRepository, StatsRepository>();
+        services.AddSingleton<StatsService>();
         return services;
     }
 }
