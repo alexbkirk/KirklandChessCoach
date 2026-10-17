@@ -57,7 +57,7 @@ Both kinds of note share the headline and facts below. Coach notes also have the
 
 - **Headline.** What the move allowed, named and concrete: "Bd3 allows a knight fork: Nc7+ hits your king on e8 and your rook on a8." If the move allowed nothing nameable, the headline is what you missed instead.
 - **Facts**, each only when it applies:
-  - whether the threat was already on the board before your move (checked with a null move at depth 12) or your move created it. An ignored threat says this in its headline, so the line is left out;
+  - whether the threat was already on the board before your move (checked with a null move at depth 12) or your move created it. The line is left out for a hung piece (the move itself created the threat) and an ignored threat (its headline already says so);
   - what you missed, if the best move was a tactic;
   - winning chances before and after;
   - how long you spent on the move, against your usual time for that stage of the game.

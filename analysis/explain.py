@@ -142,7 +142,8 @@ def explain(eng, b, mv, before, after):
         else:
             headline = f"{san} costs you: {reply_san} follows, and {best_san} was the better move."
         if missed: why.append(f"You also missed {phrase(missed[0])}: {missed[0]['d']}.")
-    if side == "positional" or (side == "allowed" and m["k"] != "ignored_threat"):   # an ignored threat already says so
+    # A hung piece is a threat the move itself created, and an ignored threat says it was already there: skip both.
+    if side == "positional" or (side == "allowed" and m["k"] not in ("hung_piece", "ignored_threat")):
         there = threat_was_there(eng, b, reply, 100 - ch_after)
         if there is True: why.append(f"The threat was already on the board before {san}; your move did nothing about it.")
         elif there is False and side == "allowed": why.append(f"Before {san} they had no such shot. Your move created it.")

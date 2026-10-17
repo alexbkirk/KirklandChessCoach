@@ -74,6 +74,20 @@ class ExplainTests(unittest.TestCase):
         self.assertEqual("f3 costs you: e5 follows, and e4 was the better move.", note["headline"])
 
 
+    def test_a_hung_piece_does_not_also_claim_the_threat_was_already_there(self):
+        # White's knight goes to e5, where the pawn on d6 takes it.
+        board = chess.Board("4k3/8/3p4/8/8/5N2/8/4K3 w - - 0 1")
+        before = info(250, chess.WHITE, ["f3d4"])
+        after = info(-50, chess.WHITE, ["d6e5"])
+        eng = FakeEngine(cp_for_side_to_move=500)
+
+        note = explain(eng, board, chess.Move.from_uci("f3e5"), before, after)
+
+        self.assertEqual("hung_piece", note["motif"]["k"])
+        self.assertFalse(any("already on the board" in w for w in note["why"]))
+        self.assertEqual(0, eng.calls)
+
+
 class TimeTests(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
