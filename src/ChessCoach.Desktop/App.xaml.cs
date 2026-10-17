@@ -67,6 +67,7 @@ public partial class App : Application
         builder.Services.PostConfigure<ChessCoachOptions>(o => o.AnalysisDirectory ??= FindAnalysisDirectory());
         builder.Services.AddWpfBlazorWebView();
         builder.Services.AddMudServices();
+        builder.Services.AddScoped<ChessCoach.UI.ChessRules>();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif

@@ -1,0 +1,57 @@
+@inject DrillService Drill
+
+<div class="d-flex align-center justify-space-between mb-2 flex-wrap gap-2">
+    <MudText Typo="Typo.h6">Daily blunder check</MudText>
+    @if (_day is not null)
+    {
+        <MudText Typo="Typo.caption">
+            <b>@_day.Slots.Count(s => s.Done)/@_day.Slots.Count</b> done today ·
+            <b>@_day.Streak</b> day streak · <b>@_day.DaysCompleted</b> @(_day.DaysCompleted == 1 ? "day" : "days") completed
+        </MudText>
+    }
+</div>
+<MudText Typo="Typo.body2" Class="mb-3">
+    Three positions a day from your own one-move blunders, each in a random format: spot what hangs, scan checks,
+    captures and threats, or judge a move safe or a blunder. A new set appears each day.
+</MudText>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_day is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_day.Slots.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No drill positions yet: the blunders need tagging first (analysis\tag_blunders.py).</MudAlert>
+}
+else
+{
+    <div class="drill-grid">
+        @foreach (var slot in _day.Slots)
+        {
+            <DrillCard @key="slot.Index" Slot="slot" Day="_day.Day" OnChanged="ReloadAsync" />
+        }
+    </div>
+}
+
+@code {
+    private DrillDay? _day;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            _day = await Drill.GetTodayAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

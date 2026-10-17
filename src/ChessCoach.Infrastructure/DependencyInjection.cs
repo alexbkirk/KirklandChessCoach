@@ -19,6 +19,8 @@ public static class DependencyInjection
         services.AddSingleton<IDiagnosticsService, DiagnosticsService>();
         services.AddSingleton<IPuzzleRepository, PuzzleRepository>();
         services.AddSingleton<PuzzleService>();
+        services.AddSingleton<IDrillRepository, DrillRepository>();
+        services.AddSingleton<DrillService>();
         return services;
     }
 }
