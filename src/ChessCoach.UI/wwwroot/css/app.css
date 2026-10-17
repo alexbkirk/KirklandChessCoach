@@ -53,3 +53,20 @@ html, body {
     height: auto;
     aspect-ratio: 1 / 1;
 }
+
+.focus-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 900px) {
+    .focus-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.focus-examples {
+    margin: 4px 0 0;
+    padding-left: 20px;
+}

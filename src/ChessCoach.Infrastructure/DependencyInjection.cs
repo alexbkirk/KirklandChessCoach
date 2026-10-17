@@ -21,6 +21,8 @@ public static class DependencyInjection
         services.AddSingleton<PuzzleService>();
         services.AddSingleton<IDrillRepository, DrillRepository>();
         services.AddSingleton<DrillService>();
+        services.AddSingleton<IFocusRepository, FocusRepository>();
+        services.AddSingleton<WeeklyFocusService>();
         return services;
     }
 }
