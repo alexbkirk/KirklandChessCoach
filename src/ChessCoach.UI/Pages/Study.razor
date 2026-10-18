@@ -1,0 +1,27 @@
+@page "/study"
+
+<PageTitle>Study · ChessCoach</PageTitle>
+
+<MudText Typo="Typo.h4" Class="page-title">Study</MudText>
+<div class="page-subtitle">Dig into your opponents, blunders, games and habits.</div>
+
+<ColorFilterBar @bind-Value="_color" />
+
+<MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4">
+    <MudTabPanel Text="Opponents">
+        <OpponentsPanel ColorFilter="@_color" />
+    </MudTabPanel>
+    <MudTabPanel Text="Blunders">
+        <BlundersPanel ColorFilter="@_color" />
+    </MudTabPanel>
+    <MudTabPanel Text="Games">
+        <GamesPanel ColorFilter="@_color" />
+    </MudTabPanel>
+    <MudTabPanel Text="Habits">
+        <HabitsPanel ColorFilter="@_color" />
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private string? _color;
+}

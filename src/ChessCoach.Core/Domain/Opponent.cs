@@ -111,5 +111,5 @@ public sealed record OpponentReport(
     IReadOnlyList<OpponentOpening> Openings,
     IReadOnlyList<RecordSplit> Endings);
 
-/// <summary>A row of the opponents list on the Stats page.</summary>
+/// <summary>A row of the opponents list on the Study page.</summary>
 public sealed record OpponentRow(string Name, Record Record, string LastDate, double AvgTheirRating);
