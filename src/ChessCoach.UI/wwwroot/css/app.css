@@ -399,3 +399,22 @@ html, body {
 .focus-example.selected {
     background: var(--mud-palette-action-default-hover);
 }
+
+.strikes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.strike-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--mud-palette-text-secondary);
+    box-sizing: border-box;
+}
+
+.strike-dot.used {
+    background: var(--mud-palette-error);
+    border-color: var(--mud-palette-error);
+}

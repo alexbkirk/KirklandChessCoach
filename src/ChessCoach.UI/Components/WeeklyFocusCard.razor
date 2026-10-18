@@ -94,35 +94,18 @@ else
             }
         </div>
 
-        @if (_practising is { } p && p < _focus.Examples.Count)
+        @if (_practising is { } p && p < _focus.Examples.Count && _focus.Examples[p] is { BestUci: { } bestUci } practiceExample)
         {
-            var example = _focus.Examples[p];
-            <div class="puzzle-layout mt-4">
-                <div class="puzzle-board">
-                    <ChessBoard @ref="_board" Fen="@example.Fen" Orientation="@example.Color" MovableColor="@(_answer is null ? example.Color : null)"
-                                Marks="@Marks(example)" OnMove="AnswerAsync" />
-                </div>
-                <div class="puzzle-side">
-                    <MudText Typo="Typo.body1" Class="mb-2"><b>@(example.Color == "white" ? "White" : "Black") to move.</b> In the game you played @example.PlayedSan. Find a better move.</MudText>
-                    @if (_answer is not null)
-                    {
-                        <MudAlert Severity="@(_answer.Value ? Severity.Success : Severity.Warning)" Class="mb-2">
-                            @(_answer.Value ? "That's the engine's move." : $"Not quite. The engine's move is {example.BestSan} (green arrow).")
-                        </MudAlert>
-                        @if (example.Headline is not null)
-                        {
-                            <MudText Typo="Typo.body2" Class="mb-3">@example.Headline</MudText>
-                        }
-                        <div class="d-flex gap-2">
-                            <MudButton Variant="Variant.Outlined" OnClick="TryAgainAsync">Try again</MudButton>
-                            <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
-                        </div>
-                    }
-                    else
-                    {
+            <div class="mt-4">
+                <PracticePosition @key="@($"{p}-{_run}")" Fen="@practiceExample.Fen" Side="@practiceExample.Color" Accept="@([bestUci])" BestUci="@bestUci" BestSan="@practiceExample.BestSan"
+                                  Explanation="@practiceExample.Headline">
+                    <Prompt>
+                        <MudText Typo="Typo.body1" Class="mb-3"><b>@(practiceExample.Color == "white" ? "White" : "Black") to move.</b> In the game you played @practiceExample.PlayedSan. Find a better move.</MudText>
+                    </Prompt>
+                    <Finished Context="result">
                         <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
-                    }
-                </div>
+                    </Finished>
+                </PracticePosition>
             </div>
         }
     }
@@ -132,8 +115,7 @@ else
     private WeeklyFocus? _focus;
     private string? _error;
     private int? _practising;
-    private bool? _answer;
-    private ChessBoard? _board;
+    private int _run;
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,30 +132,14 @@ else
     private void Practise(int index)
     {
         _practising = index;
-        _answer = null;
+        _run++;
     }
 
     private void Close()
     {
         _practising = null;
-        _answer = null;
     }
 
-    private async Task AnswerAsync(BoardMove move)
-    {
-        if (_practising is not { } p || _focus is null) return;
-        _answer = move.Uci == _focus.Examples[p].BestUci;
-        if (_board is not null) await _board.ResetAsync();
-    }
-
-    private async Task TryAgainAsync()
-    {
-        _answer = null;
-        if (_board is not null) await _board.ResetAsync();
-    }
-
-    private IReadOnlyList<BoardMark> Marks(FocusExample example) =>
-        _answer is null || example.BestUci is not { Length: >= 4 } best ? [] : [new BoardMark(best[..2], "green", best[2..4])];
 
     private static string Month(DateOnly date) => date.ToString("MMM yyyy", CultureInfo.InvariantCulture);
 

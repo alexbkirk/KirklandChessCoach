@@ -136,39 +136,20 @@ else
                 {
                     var spot = _review.Trouble[_practiceIndex];
                     <MudText Typo="Typo.caption">Position @(_practiceIndex + 1) of @_review.Trouble.Count · @TallyText(spot)</MudText>
-                    <div class="puzzle-layout mt-1">
-                        <div class="puzzle-board">
-                            <ChessBoard @ref="_practiceBoard" Fen="@spot.Fen" Orientation="@_scope.Color"
-                                        MovableColor="@(_answer is null ? _scope.Color : null)" Marks="@PracticeMarks(spot)" OnMove="AnswerAsync" />
-                        </div>
-                        <div class="puzzle-side">
+                    <PracticePosition @key="@($"{spot.Key}-{_practiceRun}")" Fen="@spot.Fen" Side="@_scope.Color" Accept="@spot.Accept"
+                                      BestUci="@spot.BestUci" BestSan="@spot.BestSan" OnAttempt="RecordAttemptAsync"
+                                      Explanation="@($"In your games you went wrong here {spot.Slips} of {spot.Reached} times, most often with {spot.MistakeSan} ({spot.MistakeCount}×, losing {Pawns(spot.MistakeAvgCpLoss)}).")">
+                        <Prompt>
                             <MudText Typo="Typo.body1" Class="mb-1"><b>@Side to play, move @((spot.Ply + 1) / 2).</b></MudText>
                             <MudText Typo="Typo.body2" Class="mb-3">After @spot.Path. Find a good move.</MudText>
-                            @if (_answer is null)
-                            {
-                                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="ShowAnswer">Show answer</MudButton>
-                            }
-                            else
-                            {
-                                <MudPaper Class="pa-3 mb-3" Style="@(_answer.Correct ? "background:rgba(46,139,87,.18)" : "background:rgba(200,85,61,.18)")">
-                                    <MudText Typo="Typo.h6">@(_answer.Correct ? "Good move" : _answer.Played is null ? "Answer shown" : "Not this one")</MudText>
-                                    @if (_answer.Played is not null)
-                                    {
-                                        <MudText Typo="Typo.body2">You played @_answer.Played.San.</MudText>
-                                    }
-                                    <MudText Typo="Typo.body2">The engine's choice is <b>@spot.BestSan</b> (green arrow).</MudText>
-                                    <MudText Typo="Typo.body2" Class="mt-1">
-                                        In your games you went wrong here @spot.Slips of @spot.Reached times, most often with @spot.MistakeSan (@spot.MistakeCount×, losing @Pawns(spot.MistakeAvgCpLoss)).
-                                    </MudText>
-                                </MudPaper>
-                                <div class="d-flex gap-2">
-                                    <MudButton Variant="Variant.Outlined" OnClick="TryAgainAsync">Try again</MudButton>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync">Next position</MudButton>
-                                    <a href="@spot.ExampleUrl" target="_blank" rel="noopener" class="align-self-center">view game</a>
-                                </div>
-                            }
-                        </div>
-                    </div>
+                        </Prompt>
+                        <Finished Context="result">
+                            <div class="d-flex gap-2 align-center">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync">Next position</MudButton>
+                                <a href="@spot.ExampleUrl" target="_blank" rel="noopener">view game</a>
+                            </div>
+                        </Finished>
+                    </PracticePosition>
                 }
             </MudTabPanel>
         </MudTabs>
@@ -182,8 +163,6 @@ else
 
     [SupplyParameterFromQuery(Name = "opening")] public string? OpeningQuery { get; set; }
 
-    private sealed record Answer(BoardMove? Played, bool Correct);
-
     private OpeningScope? _scope;
     private string? _family;
     private VariationReview? _review;
@@ -192,8 +171,7 @@ else
     private int _tab;
     private int _lineIndex;
     private int _practiceIndex;
-    private Answer? _answer;
-    private ChessBoard? _practiceBoard;
+    private int _practiceRun;
 
     private string Side => _scope?.Color == "black" ? "Black" : "White";
 
@@ -209,7 +187,6 @@ else
         _error = null;
         _lineIndex = 0;
         _practiceIndex = 0;
-        _answer = null;
         if (scope is null) return;
         try
         {
@@ -226,48 +203,29 @@ else
     private void StartPractice(int index)
     {
         _practiceIndex = index;
-        _answer = null;
+        _practiceRun++;
         _tab = 2;
     }
 
-    private async Task AnswerAsync(BoardMove move)
+    /// <summary>Every move tried is saved (right or wrong), so the tally shows how often you get the position right.</summary>
+    private async Task RecordAttemptAsync(PracticeAttempt attempt)
     {
-        if (_review is null || _answer is not null) return;
-        var spot = _review.Trouble[_practiceIndex];
-        var correct = await Variations.AnswerAsync(spot, move.Uci);
-        _answer = new Answer(move, correct);
+        if (_review is null || attempt.Uci is null) return;
+        await Variations.AnswerAsync(_review.Trouble[_practiceIndex], attempt.Uci);
         _tally = await Variations.GetPracticeAsync(_review.Trouble.Select(t => t.Key).ToList());
-        if (_practiceBoard is not null) await _practiceBoard.ResetAsync();
     }
 
-    private void ShowAnswer() => _answer = new Answer(null, false);
-
-    private async Task TryAgainAsync()
-    {
-        _answer = null;
-        if (_practiceBoard is not null) await _practiceBoard.ResetAsync();
-    }
-
-    private async Task NextAsync()
+    private void NextAsync()
     {
         if (_review is null) return;
         _practiceIndex = (_practiceIndex + 1) % _review.Trouble.Count;
-        await TryAgainAsync();
+        _practiceRun++;
     }
 
     private IReadOnlyList<BoardMark> LineMarks(LineMove move)
     {
         var marks = new List<BoardMark> { Arrow(move.Uci, move.IsMine && move.AvgCpLoss >= 100 ? "red" : "yellow") };
         if (move.IsMine && move.BestUci is { Length: >= 4 } best && best != move.Uci) marks.Add(Arrow(best, "green"));
-        return marks;
-    }
-
-    private IReadOnlyList<BoardMark> PracticeMarks(TroubleSpot spot)
-    {
-        if (_answer is null) return [];
-        var marks = new List<BoardMark>();
-        if (_answer.Played is { } played && played.Uci != spot.BestUci) marks.Add(Arrow(played.Uci, _answer.Correct ? "blue" : "red"));
-        if (spot.BestUci.Length >= 4) marks.Add(Arrow(spot.BestUci, "green"));
         return marks;
     }
 
