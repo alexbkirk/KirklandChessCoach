@@ -5,6 +5,9 @@ namespace ChessCoach.Core.Review;
 
 public sealed record ReviewSummary(int Inaccuracies, int Mistakes, int Blunders, double AverageLoss);
 
+/// <summary>One line of the move list: a move number with White's and Black's move, either of which may be missing.</summary>
+public sealed record MoveRow(int Number, ReviewMove? White, ReviewMove? Black);
+
 /// <summary>Pure helpers for the review page: labels, the evaluation curve, key moments and the annotation symbols.</summary>
 public static class ReviewTimeline
 {
@@ -55,6 +58,10 @@ public static class ReviewTimeline
             AverageLoss: mine.Count == 0 ? 0 : mine.Average(m => (double)m.CpLoss));
     }
 
+    /// <summary>The plies of the player's own mistakes and blunders (not on the last move of the game).</summary>
+    public static IReadOnlyList<int> KeyMoves(IReadOnlyList<ReviewMove> moves) =>
+        moves.Where(m => m.IsMine && !m.IsLast && m.Class is "mistake" or "blunder").Select(m => m.Ply).ToList();
+
     /// <summary>
     /// The position to jump to for the next (or previous) of the player's own mistakes or blunders, after <paramref name="position"/>
     /// (0 is the start, n is after the nth move). Null when there is none that way.
@@ -62,11 +69,37 @@ public static class ReviewTimeline
     public static int? KeyMoment(IReadOnlyList<ReviewMove> moves, int position, bool forward)
     {
         // landing on the position before the move shows the player what they faced
-        var candidates = moves
-            .Where(m => m.IsMine && !m.IsLast && m.Class is "mistake" or "blunder")
-            .Select(m => m.Ply - 1);
+        var candidates = KeyMoves(moves).Select(ply => ply - 1);
         return forward
             ? candidates.Where(p => p > position).Select(p => (int?)p).FirstOrDefault()
             : candidates.Where(p => p < position).Select(p => (int?)p).LastOrDefault();
+    }
+
+    /// <summary>
+    /// The move list as numbered lines. A game that starts with Black to move, or has a gap in its plies, still lists every move:
+    /// the missing side of a line is null.
+    /// </summary>
+    public static IReadOnlyList<MoveRow> MoveRows(IReadOnlyList<ReviewMove> moves)
+    {
+        if (moves.Count == 0) return [];
+        var byPly = moves.GroupBy(m => m.Ply).ToDictionary(g => g.Key, g => g.First());
+        var rows = new List<MoveRow>();
+        for (var number = (moves.Min(m => m.Ply) + 1) / 2; number <= (moves.Max(m => m.Ply) + 1) / 2; number++)
+        {
+            var white = byPly.GetValueOrDefault(number * 2 - 1);
+            var black = byPly.GetValueOrDefault(number * 2);
+            if (white is not null || black is not null) rows.Add(new MoveRow(number, white, black));
+        }
+
+        return rows;
+    }
+
+    /// <summary>The note cut to about <paramref name="maxCharacters"/> characters with an ellipsis, never in the middle of a character such as an emoji.</summary>
+    public static string Shorten(string note, int maxCharacters)
+    {
+        var characters = new StringInfo(note);
+        return characters.LengthInTextElements <= maxCharacters
+            ? note
+            : characters.SubstringByTextElements(0, maxCharacters) + "…";
     }
 }

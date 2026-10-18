@@ -85,6 +85,72 @@ public sealed class ReviewTimelineTests
         Assert.Null(ReviewTimeline.KeyMoment(moves, 0, forward: true));
     }
 
+    [Fact]
+    public void Key_moves_are_the_plies_of_your_mistakes_and_blunders_except_on_the_last_move()
+    {
+        var moves = new[] { Move(1, "blunder", mine: false), Move(3, "mistake"), Move(5, "inaccuracy"), Move(7, "blunder"), Move(9, "blunder", last: true) };
+
+        Assert.Equal([3, 7], ReviewTimeline.KeyMoves(moves));
+    }
+
+    [Fact]
+    public void The_move_list_pairs_white_and_black_moves_under_each_move_number()
+    {
+        var rows = ReviewTimeline.MoveRows([Move(1), Move(2), Move(3), Move(4), Move(5)]);
+
+        Assert.Equal([1, 2, 3], rows.Select(r => r.Number));
+        Assert.Equal((1, 2), (rows[0].White!.Ply, rows[0].Black!.Ply));
+        Assert.Equal(5, rows[2].White!.Ply);
+        Assert.Null(rows[2].Black);
+    }
+
+    [Fact]
+    public void A_game_that_starts_with_black_to_move_lists_that_move_on_black_s_side()
+    {
+        var rows = ReviewTimeline.MoveRows([Move(2), Move(3), Move(4)]);
+
+        Assert.Equal([1, 2], rows.Select(r => r.Number));
+        Assert.Null(rows[0].White);
+        Assert.Equal(2, rows[0].Black!.Ply);
+        Assert.Equal((3, 4), (rows[1].White!.Ply, rows[1].Black!.Ply));
+    }
+
+    [Fact]
+    public void A_gap_in_the_plies_does_not_drop_a_move_from_the_list()
+    {
+        // ply 2 is missing: Black's reply to move 1 is gone, and nothing after it may be lost
+        var rows = ReviewTimeline.MoveRows([Move(1), Move(3), Move(4)]);
+
+        Assert.Equal([1, 2], rows.Select(r => r.Number));
+        Assert.Null(rows[0].Black);
+        Assert.Equal((3, 4), (rows[1].White!.Ply, rows[1].Black!.Ply));
+        Assert.Equal(3, rows.Sum(r => (r.White is null ? 0 : 1) + (r.Black is null ? 0 : 1)));
+    }
+
+    [Fact]
+    public void No_moves_make_no_rows()
+    {
+        Assert.Empty(ReviewTimeline.MoveRows([]));
+    }
+
+    [Theory]
+    [InlineData("short", 90, "short")]
+    [InlineData("abcdef", 3, "abc…")]
+    [InlineData("abc", 3, "abc")]
+    public void Long_notes_are_cut_with_an_ellipsis(string note, int max, string expected)
+    {
+        Assert.Equal(expected, ReviewTimeline.Shorten(note, max));
+    }
+
+    [Fact]
+    public void Cutting_a_note_never_splits_an_emoji()
+    {
+        // each of these is two UTF-16 units: cutting by units would leave half of the third one
+        var shortened = ReviewTimeline.Shorten("😀😀😀😀😀", 2);
+
+        Assert.Equal("😀😀…", shortened);
+    }
+
     [Theory]
     [InlineData("!!", true)]
     [InlineData("!", true)]

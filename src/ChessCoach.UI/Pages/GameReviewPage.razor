@@ -3,6 +3,7 @@
 @using ChessCoach.Core.Review
 @using ChessCoach.Core.Stats
 @using Microsoft.AspNetCore.Components.Web
+@implements IAsyncDisposable
 @inject GameReviewService Reviews
 @inject ChessRules Rules
 
@@ -39,6 +40,11 @@ else
             <span> · <a href="@game.Url" target="_blank" rel="noopener">view on chess.com</a></span>
         }
     </MudText>
+
+    @if (_finalPositionMissing)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4">The position after the last move could not be worked out, so the board shows the position before it.</MudAlert>
+    }
 
     @if (_review.Moves.Count == 0)
     {
@@ -140,10 +146,18 @@ else
                     <MudPaper Class="pa-4 mb-4">
                         <MudText Typo="Typo.subtitle2" Class="mb-2">Moves</MudText>
                         <div class="review-moves">
-                            @foreach (var row in MoveRows())
+                            @foreach (var row in ReviewTimeline.MoveRows(_review.Moves))
                             {
                                 <span class="review-number">@row.Number.</span>
-                                @MoveCell(row.White)
+                                @if (row.White is not null)
+                                {
+                                    @MoveCell(row.White)
+                                }
+                                else
+                                {
+                                    <span></span>
+                                }
+
                                 @if (row.Black is not null)
                                 {
                                     @MoveCell(row.Black)
@@ -165,9 +179,9 @@ else
                         {
                             var ply = note.Ply;
                             var label = _review.Moves.FirstOrDefault(m => m.Ply == ply) is { } annotated ? ReviewTimeline.MoveLabel(ply, annotated.San) : $"Move {ply}";
-                            <div class="review-note-item" @onclick="() => GoToAsync(ply)">
-                                <b>@label @note.Glyph</b> @Shorten(note.Note)
-                            </div>
+                            <button type="button" class="review-note-item" @onclick="() => GoToAsync(ply)">
+                                <b>@label @note.Glyph</b> @ReviewTimeline.Shorten(note.Note, 90)
+                            </button>
                         }
                     </MudPaper>
                 }
@@ -202,6 +216,10 @@ else
     private string? _draftGlyph;
     private int _draftPly;
     private bool _saved;
+    private bool _finalPositionMissing;
+
+    /// <summary>Saves run one at a time, so a save from leaving a box and one from moving on never overlap.</summary>
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
     private string _gameNote = "";
 
     private ReviewMove? CurrentMove => _review is not null && _position > 0 ? _review.Moves[_position - 1] : null;
@@ -262,7 +280,7 @@ else
             _gameNote = _review.GameNote;
             _summary = ReviewTimeline.Summarise(_review.Moves);
             _chances = ReviewTimeline.WhiteChances(_review.Moves);
-            _keyMoves = _review.Moves.Where(m => m.IsMine && !m.IsLast && m.Class is "mistake" or "blunder").Select(m => m.Ply).ToList();
+            _keyMoves = ReviewTimeline.KeyMoves(_review.Moves).ToList();
             _fens = await BuildFensAsync(_review.Moves);
             Refresh();
         }
@@ -280,10 +298,13 @@ else
     private async Task<List<string>> BuildFensAsync(IReadOnlyList<ReviewMove> moves)
     {
         var fens = moves.Select(m => m.FenBefore).ToList();
+        _finalPositionMissing = false;
         if (moves.Count > 0)
         {
             var last = moves[^1];
-            fens.Add(await Rules.FenAfterAsync(last.FenBefore, last.Uci) ?? last.FenBefore);
+            var after = await Rules.FenAfterAsync(last.FenBefore, last.Uci);
+            _finalPositionMissing = after is null;
+            fens.Add(after ?? last.FenBefore);
         }
 
         return fens;
@@ -293,7 +314,9 @@ else
     private async Task GoToAsync(int position)
     {
         if (_review is null) return;
-        await SaveDraftAsync();
+
+        // do not move on while the note on screen could not be saved: the text stays in its box with the error beside it
+        if (!await SaveDraftAsync()) return;
         _position = Math.Clamp(position, 0, _review.Moves.Count);
         Refresh();
     }
@@ -312,6 +335,8 @@ else
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
+        // leave browser shortcuts such as Alt+Left (back) alone
+        if (e.AltKey || e.CtrlKey || e.MetaKey || e.ShiftKey) return;
         if (e.Key == "ArrowLeft") await GoToAsync(_position - 1);
         else if (e.Key == "ArrowRight") await GoToAsync(_position + 1);
     }
@@ -323,59 +348,76 @@ else
     }
 
     /// <summary>Saves the note and symbol for the move on screen, when they differ from what is saved.</summary>
-    private async Task SaveDraftAsync()
+    private async Task<bool> SaveDraftAsync()
     {
-        if (_review is null || _draftPly < 1) return;
-        var ply = _draftPly;
-        var note = (_draftNote ?? "").Trim();
-        _notes.TryGetValue(ply, out var current);
-        if ((current?.Note ?? "") == note && current?.Glyph == _draftGlyph) return;
+        if (_review is null) return true;
 
+        await _saveGate.WaitAsync();
         try
         {
-            await Reviews.SaveMoveAnnotationAsync(_review.Game.Id, ply, _draftGlyph, note);
-            if (note.Length == 0 && _draftGlyph is null) _notes.Remove(ply);
-            else _notes[ply] = new MoveAnnotation(ply, _draftGlyph, note);
-            _saved = true;
+            // read what is on screen only now it is this save's turn, and keep it in locals across the await
+            var ply = _draftPly;
+            if (ply < 1) return true;
+            var glyph = _draftGlyph;
+            var note = (_draftNote ?? "").Trim();
+            _notes.TryGetValue(ply, out var current);
+            if ((current?.Note ?? "") == note && current?.Glyph == glyph) return true;
+
+            await Reviews.SaveMoveAnnotationAsync(_review.Game.Id, ply, glyph, note);
+            if (note.Length == 0 && glyph is null) _notes.Remove(ply);
+            else _notes[ply] = new MoveAnnotation(ply, glyph, note);
+            if (ply == _draftPly) _saved = true;
             _error = null;
+            return true;
         }
         catch (Exception ex)
         {
             _error = $"The note was not saved: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            _saveGate.Release();
         }
     }
 
-    private async Task SaveGameNoteAsync()
+    private async Task<bool> SaveGameNoteAsync()
     {
-        if (_review is null || _gameNote.Trim() == _review.GameNote) return;
+        if (_review is null) return true;
+
+        await _saveGate.WaitAsync();
         try
         {
-            await Reviews.SaveGameNoteAsync(_review.Game.Id, _gameNote);
-            _review = _review with { GameNote = _gameNote.Trim() };
+            var note = _gameNote.Trim();
+            if (note == _review.GameNote) return true;
+
+            await Reviews.SaveGameNoteAsync(_review.Game.Id, note);
+            _review = _review with { GameNote = note };
             _error = null;
+            return true;
         }
         catch (Exception ex)
         {
             _error = $"The note was not saved: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            _saveGate.Release();
         }
     }
 
-    private sealed record MoveRow(int Number, ReviewMove White, ReviewMove? Black);
-
-    private IEnumerable<MoveRow> MoveRows()
+    /// <summary>Last chance to keep what was typed when the page is left without clicking away first.</summary>
+    public async ValueTask DisposeAsync()
     {
-        var moves = _review!.Moves;
-        for (var i = 0; i < moves.Count; i++)
+        try
         {
-            if (moves[i].Ply % 2 == 1)
-            {
-                yield return new MoveRow((moves[i].Ply + 1) / 2, moves[i], i + 1 < moves.Count && moves[i + 1].Ply == moves[i].Ply + 1 ? moves[i + 1] : null);
-            }
-            else if (i == 0)
-            {
-                // a game that starts with Black to move: show the first move on its own
-                yield return new MoveRow(moves[i].Ply / 2, moves[i], null);
-            }
+            await SaveDraftAsync();
+            await SaveGameNoteAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            // the circuit is already gone: nothing more can be saved
         }
     }
 
@@ -384,14 +426,13 @@ else
         var annotation = _notes.GetValueOrDefault(move.Ply);
         var classes = $"review-move {(move.Ply == _position ? "selected" : "")} cls-{(move.IsMine ? move.Class : "")}";
         var ply = move.Ply;
-        builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "class", classes);
-        builder.AddAttribute(2, "onclick", EventCallback.Factory.Create(this, () => GoToAsync(ply)));
-        builder.AddContent(3, move.San + (annotation?.Glyph ?? "") + (annotation is { Note.Length: > 0 } ? " ✎" : ""));
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", classes);
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => GoToAsync(ply)));
+        builder.AddContent(4, move.San + (annotation?.Glyph ?? "") + (annotation is { Note.Length: > 0 } ? " ✎" : ""));
         builder.CloseElement();
     };
-
-    private static string Shorten(string note) => note.Length <= 90 ? note : note[..90] + "…";
 
     private static Color ResultColor(string result) => result switch
     {
