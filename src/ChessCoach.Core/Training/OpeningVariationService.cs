@@ -3,7 +3,7 @@ using ChessCoach.Core.Domain;
 
 namespace ChessCoach.Core.Training;
 
-/// <summary>The variation page: review your usual line and practise the positions where you go wrong.</summary>
+/// <summary>The variation page: review your usual line and practice the positions where you go wrong.</summary>
 public sealed class OpeningVariationService(IOpeningRepository repository, IClock clock)
 {
     public async Task<VariationReview> GetAsync(OpeningScope scope, CancellationToken cancellationToken = default)

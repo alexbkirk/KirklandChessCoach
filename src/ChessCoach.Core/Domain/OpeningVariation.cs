@@ -22,7 +22,7 @@ public sealed record VariationPly(string GameId, int Ply, string Fen, string San
 /// <param name="Slips">How often this move lost 100 centipawns or more (your moves only).</param>
 public sealed record LineMove(int Ply, string Fen, string San, string Uci, bool IsMine, int Games, int Reached, double AvgCpLoss, int Slips, string? BestSan, string? BestUci);
 
-/// <summary>A position from your games where you have gone wrong, to review and practise.</summary>
+/// <summary>A position from your games where you have gone wrong, to review and practice.</summary>
 /// <param name="Key">The position (FEN without the move counters); identifies it for practice history.</param>
 /// <param name="Path">The moves that reach it, e.g. "1.e4 c6 2.Nc3 d5 3.Nf3".</param>
 /// <param name="Reached">Times you have had this position (your move).</param>

@@ -24,7 +24,7 @@ public sealed record FocusBlunder(
 /// <summary>One kind of mistake and how often it happened in the window.</summary>
 public sealed record LeakCount(string Key, string Label, int Count);
 
-/// <summary>A recent blunder of the focus kind: what happened, and the position to practise.</summary>
+/// <summary>A recent blunder of the focus kind: what happened, and the position to practice.</summary>
 /// <param name="Fen">The position before your move; you play <paramref name="Color"/>.</param>
 public sealed record FocusExample(
     DateOnly Date,

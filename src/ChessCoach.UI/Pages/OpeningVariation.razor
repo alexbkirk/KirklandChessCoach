@@ -121,7 +121,7 @@ else
                                     <td class="text-right">@spot.Slips of @spot.Reached</td>
                                     <td>@TallyText(spot)</td>
                                     <td class="text-nowrap">
-                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => StartPractice(index)">Practise</MudButton>
+                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => StartPractice(index)">Practice</MudButton>
                                         <a href="@spot.ExampleUrl" target="_blank" rel="noopener" class="ml-2">game</a>
                                     </td>
                                 </tr>
@@ -237,7 +237,7 @@ else
     private string TallyText(TroubleSpot spot) =>
         _tally.TryGetValue(spot.Key, out var t)
             ? $"{t.Correct} of {t.Tries} right{(t.LastCorrect ? ", last one right" : "")}"
-            : "not practised yet";
+            : "not practiced yet";
 
     /// <summary>"3." before White's move, "3..." before Black's (only when it starts a sequence or stands alone).</summary>
     private static string MoveNumber(int ply, bool standalone)
