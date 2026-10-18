@@ -1,7 +1,7 @@
 <MudButtonGroup Variant="Variant.Outlined" Class="mb-4">
-    <MudButton OnClick="PickAllAsync" Color="@ColorFor(null)">All</MudButton>
-    <MudButton OnClick="PickWhiteAsync" Color="@ColorFor("white")">White</MudButton>
-    <MudButton OnClick="PickBlackAsync" Color="@ColorFor("black")">Black</MudButton>
+    <MudButton OnClick="PickAllAsync" Color="@ColorFor(null)" aria-pressed="@Pressed(null)">All</MudButton>
+    <MudButton OnClick="PickWhiteAsync" Color="@ColorFor("white")" aria-pressed="@Pressed("white")">White</MudButton>
+    <MudButton OnClick="PickBlackAsync" Color="@ColorFor("black")" aria-pressed="@Pressed("black")">Black</MudButton>
 </MudButtonGroup>
 
 @code {
@@ -17,4 +17,7 @@
     private Task PickBlackAsync() => ValueChanged.InvokeAsync("black");
 
     private Color ColorFor(string? color) => Value == color ? Color.Primary : Color.Default;
+
+    /// <summary>For assistive technology: the selected colour is announced as pressed, not only shown by its colour.</summary>
+    private string Pressed(string? color) => Value == color ? "true" : "false";
 }
