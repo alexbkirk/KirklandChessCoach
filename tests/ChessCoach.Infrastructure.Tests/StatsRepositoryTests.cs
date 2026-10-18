@@ -11,9 +11,9 @@ public sealed class StatsRepositoryTests
         await db.Migrations.MigrateAsync();
         await db.ExecuteAsync(
             """
-            INSERT INTO games(id, date, time, color, result, myRating, oppRating, timeControl, family, ending, plies, opponent) VALUES
-              ('late', '2026-03-01', '09:00:00', 'black', 'draw', 1010, 1000, '900+10', 'Caro Kann Defense', 'agreement', 80, 'Eve'),
-              ('early', '2025-12-31', '23:00:00', 'white', 'win', 990, 1000, '600', 'Pirc Defense', 'checkmate', 40, 'Bob');
+            INSERT INTO games(id, url, date, time, color, result, myRating, oppRating, timeControl, family, ending, plies, opponent) VALUES
+              ('late', 'https://x/late', '2026-03-01', '09:00:00', 'black', 'draw', 1010, 1000, '900+10', 'Caro Kann Defense', 'agreement', 80, 'Eve'),
+              ('early', NULL, '2025-12-31', '23:00:00', 'white', 'win', 990, 1000, '600', 'Pirc Defense', 'checkmate', 40, 'Bob');
             """);
 
         var games = await new StatsRepository(db.Connections).LoadGamesAsync();
@@ -24,6 +24,8 @@ public sealed class StatsRepositoryTests
         Assert.Equal(1010, games[1].MyRating);
         Assert.Equal("900+10", games[1].TimeControl);
         Assert.Equal(80, games[1].Plies);
+        Assert.Equal("https://x/late", games[1].Url);
+        Assert.Equal("", games[0].Url);
     }
 
     [Fact]

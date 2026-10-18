@@ -16,7 +16,8 @@ public sealed class StatsRepository(SqliteConnectionFactory connections) : IStat
             SELECT id AS Id, CAST(date AS TEXT) AS Date, CAST(time AS TEXT) AS Time, CAST(color AS TEXT) AS Color,
                    CAST(result AS TEXT) AS Result, myRating AS MyRating, oppRating AS OppRating,
                    CAST(timeControl AS TEXT) AS TimeControl, CAST(family AS TEXT) AS Family,
-                   CAST(ending AS TEXT) AS Ending, plies AS Plies, CAST(opponent AS TEXT) AS Opponent
+                   CAST(ending AS TEXT) AS Ending, plies AS Plies, CAST(opponent AS TEXT) AS Opponent,
+                   CAST(url AS TEXT) AS Url
             FROM games
             ORDER BY CAST(date AS TEXT), CAST(time AS TEXT)
             """,
@@ -34,7 +35,8 @@ public sealed class StatsRepository(SqliteConnectionFactory connections) : IStat
             Family: r.Family ?? "",
             Ending: r.Ending ?? "",
             Plies: r.Plies,
-            Opponent: r.Opponent ?? "")).ToList();
+            Opponent: r.Opponent ?? "",
+            Url: r.Url ?? "")).ToList();
     }
 
     public async Task<IReadOnlyList<MoveSample>> LoadMoveSamplesAsync(CancellationToken cancellationToken = default)
@@ -101,5 +103,7 @@ public sealed class StatsRepository(SqliteConnectionFactory connections) : IStat
         public int Plies { get; set; }
 
         public string? Opponent { get; set; }
+
+        public string? Url { get; set; }
     }
 }
