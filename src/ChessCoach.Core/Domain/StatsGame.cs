@@ -13,4 +13,5 @@ public sealed record StatsGame(
     string Family,
     string Ending,
     int Plies,
-    string Opponent);
+    string Opponent,
+    string Url = "");

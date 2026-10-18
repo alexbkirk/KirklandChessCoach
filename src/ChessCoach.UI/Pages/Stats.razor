@@ -3,7 +3,7 @@
 <PageTitle>Stats · ChessCoach</PageTitle>
 
 <MudText Typo="Typo.h4" Class="page-title">Stats</MudText>
-<div class="page-subtitle">Your results, openings, opponents, blunders and habits.</div>
+<div class="page-subtitle">Your results, openings, opponents, blunders, games and habits.</div>
 
 <MudButtonGroup Variant="Variant.Outlined" Class="mb-4">
     <MudButton OnClick="ShowAll" Color="@ColorFor(null)">All</MudButton>
@@ -23,6 +23,9 @@
     </MudTabPanel>
     <MudTabPanel Text="Blunders">
         <BlundersPanel ColorFilter="@_color" />
+    </MudTabPanel>
+    <MudTabPanel Text="Games">
+        <GamesPanel ColorFilter="@_color" />
     </MudTabPanel>
     <MudTabPanel Text="Habits">
         <HabitsPanel ColorFilter="@_color" />
