@@ -6,13 +6,14 @@
 
 <MudText Typo="Typo.caption" Class="focus-hide"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
 
+<MudText Typo="Typo.h4" HtmlTag="h1" Class="mt-1">@(_scope?.Name ?? "Opening")</MudText>
+
 @if (_scope is null)
 {
     <MudAlert Severity="Severity.Warning" Class="mt-3">No opening chosen. Open this page from the opening report or the Stats openings tab.</MudAlert>
 }
 else
 {
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mt-1">@_scope.Name</MudText>
     @if (_review is not null)
     {
         <MudText Typo="Typo.body1" Class="mb-3 focus-hide">
@@ -61,7 +62,7 @@ else
                                     <span class="@LineClass(index, m)" @onclick="() => _lineIndex = index">@MoveNumber(m.Ply, index == 0)@m.San</span>
                                 }
                             </div>
-                            <MudText Typo="Typo.subtitle1"><b>@MoveNumber(move.Ply, true)@move.San</b></MudText>
+                            <MudText Typo="Typo.subtitle1" HtmlTag="h3"><b>@MoveNumber(move.Ply, true)@move.San</b></MudText>
                             <MudText Typo="Typo.body2" Class="mb-2 focus-hide">
                                 @(move.IsMine ? "You" : "Your opponent") played @move.San here in @move.Games of the @move.Reached games that reached this position.
                             </MudText>

@@ -11,6 +11,8 @@
 
 <MudText Typo="Typo.caption" Class="focus-hide"><a href="">Home</a> · <a href="study">Study</a></MudText>
 
+<MudText Typo="Typo.h4" HtmlTag="h1" Class="mt-1">@(_review is not null ? $"vs {_review.Game.Opponent}" : _loading ? "Game review" : "Game not found")</MudText>
+
 @if (_error is not null)
 {
     <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
@@ -27,7 +29,6 @@ else if (_review is null)
 else
 {
     var game = _review.Game;
-    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mt-1">vs @game.Opponent</MudText>
     <MudText Typo="Typo.body1" Class="mb-3 focus-hide">
         @game.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) · @TimeControlLabel.From(game.TimeControl) · you played @game.Color · @game.MyRating – @game.OppRating
         · <MudChip T="string" Size="Size.Small" Color="@ResultColor(game.Result)">@game.Result</MudChip> @game.Ending
@@ -124,7 +125,7 @@ else
                 @if (CurrentMove is not null)
                 {
                     <MudPaper Class="pa-4 mb-4">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Your annotation on this move</MudText>
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3" Class="mb-2">Your annotation on this move</MudText>
                         <div class="review-glyphs mb-2">
                             @foreach (var glyph in ReviewTimeline.Glyphs)
                             {
@@ -137,14 +138,14 @@ else
                 }
 
                 <MudPaper Class="pa-4 mb-4">
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Note on the whole game</MudText>
+                    <MudText Typo="Typo.subtitle2" HtmlTag="h3" Class="mb-2">Note on the whole game</MudText>
                     <MudTextField T="string" @bind-Value="_gameNote" Label="What happened in this game?" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto" MaxLength="@ReviewTimeline.MaxNoteLength" OnBlur="SaveGameNoteAsync" />
                 </MudPaper>
 
                 @if (_review.Moves.Count > 0)
                 {
                     <MudPaper Class="pa-4 mb-4">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Moves</MudText>
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3" Class="mb-2">Moves</MudText>
                         <div class="review-moves">
                             @foreach (var row in ReviewTimeline.MoveRows(_review.Moves))
                             {
@@ -174,7 +175,7 @@ else
                 @if (_notes.Count > 0)
                 {
                     <MudPaper Class="pa-4">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Your annotations</MudText>
+                        <MudText Typo="Typo.subtitle2" HtmlTag="h3" Class="mb-2">Your annotations</MudText>
                         @foreach (var note in _notes.Values.OrderBy(n => n.Ply))
                         {
                             var ply = note.Ply;

@@ -4,7 +4,7 @@
 
 <MudPaper Class="pa-3 drill-card" Outlined="true">
     <div class="d-flex justify-space-between align-center mb-1">
-        <MudText Typo="Typo.subtitle1"><b>@(Slot.Index + 1). @Title</b></MudText>
+        <MudText Typo="Typo.subtitle1" HtmlTag="h3"><b>@(Slot.Index + 1). @Title</b></MudText>
         @if (Slot.Done)
         {
             <MudChip T="string" Size="Size.Small" Color="@(DrillGrader.Passed(Slot) ? Color.Success : Color.Error)">@(DrillGrader.Passed(Slot) ? "passed" : "missed")</MudChip>

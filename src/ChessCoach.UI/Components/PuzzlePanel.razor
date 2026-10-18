@@ -41,7 +41,7 @@ else
             {
                 <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-0 mt-2 focus-hide">@puzzle.Note.Motif</MudChip>
             }
-            <MudText Typo="Typo.subtitle1" Class="mt-1 focus-hide">@puzzle.Note.Headline</MudText>
+            <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mt-1 focus-hide">@puzzle.Note.Headline</MudText>
             @foreach (var line in puzzle.Note.Why)
             {
                 <MudText Typo="Typo.body2" Class="mb-1 focus-hide">@line</MudText>
