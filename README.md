@@ -21,7 +21,9 @@ Your games and settings are kept in `%LOCALAPPDATA%\ChessCoach`. Uninstalling th
 
 ### Updating
 
-ChessCoach looks for a newer release when it opens. When one exists, a bar at the top of the window says so: press **Update**. The app downloads the installer, checks it against the release's SHA-256, closes itself and opens the installer. Your games and settings are kept. **Settings > About and updates** shows your version and has a **Check for updates** button.
+ChessCoach looks for a newer release when it opens. When one exists, a bar at the top of the window says so: press **Update**. The app downloads the installer (only from GitHub), checks it against the release's SHA-256, opens the installer and closes itself. Your games and settings are kept. **Settings > About and updates** shows your version and has a **Check for updates** button.
+
+The SHA-256 comes from the same release as the installer, so it catches a damaged download, not a tampered release, and the installer is not code-signed yet. Trust rests on who can publish releases to the repository, so keep tag and release permissions to the owner.
 
 ### If something goes wrong
 

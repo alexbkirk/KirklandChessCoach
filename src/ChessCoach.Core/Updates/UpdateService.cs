@@ -55,11 +55,12 @@ public sealed class UpdateService(Version current, IUpdateSource source, IUpdate
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Finish(UpdateState.Failed, available: Available, error: $"Could not check for updates: {ex.Message}");
+            Finish(UpdateState.Failed, available: CurrentAvailable(), error: $"Could not check for updates: {ex.Message}");
         }
         catch (OperationCanceledException)
         {
-            Finish(Available is null ? UpdateState.Idle : UpdateState.Available, available: Available);
+            var kept = CurrentAvailable();
+            Finish(kept is null ? UpdateState.Idle : UpdateState.Available, available: kept);
             throw;
         }
     }
@@ -67,7 +68,7 @@ public sealed class UpdateService(Version current, IUpdateSource source, IUpdate
     /// <summary>Downloads the update, starts its installer and closes the app.</summary>
     public async Task UpdateAsync(CancellationToken cancellationToken = default)
     {
-        var update = Available;
+        var update = CurrentAvailable();
         if (update is null || !Begin(UpdateState.Downloading)) return;
 
         try
@@ -79,16 +80,34 @@ public sealed class UpdateService(Version current, IUpdateSource source, IUpdate
             });
             var path = await installer.DownloadAsync(update, progress, cancellationToken);
             installer.Launch(path);
-            lifecycle.Shutdown();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Finish(UpdateState.Failed, available: update, error: $"The update did not install: {ex.Message}");
+            return;
         }
         catch (OperationCanceledException)
         {
             Finish(UpdateState.Available, available: update);
             throw;
+        }
+
+        // The installer is running now: a problem closing the app must not read as a failed update.
+        try
+        {
+            lifecycle.Shutdown();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Finish(UpdateState.Failed, available: update, error: $"The installer has started, but ChessCoach could not close itself ({ex.Message}). Close ChessCoach to let the update finish.");
+        }
+    }
+
+    private UpdateInfo? CurrentAvailable()
+    {
+        lock (_gate)
+        {
+            return Available;
         }
     }
 

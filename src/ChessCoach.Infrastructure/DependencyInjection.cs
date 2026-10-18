@@ -42,8 +42,8 @@ public static class DependencyInjection
         services.AddSingleton<IImportRunner, ImportRunner>();
         services.AddSingleton<ImportCoordinator>();
         services.AddSingleton<ThemeSettingsService>();
-        services.AddSingleton<IUpdateSource>(sp => new GitHubUpdateSource(new HttpClient { Timeout = TimeSpan.FromSeconds(15) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
-        services.AddSingleton<IUpdateInstaller>(sp => new UpdateInstaller(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
+        services.AddSingleton<IUpdateSource>(sp => new GitHubUpdateSource(new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(15) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
+        services.AddSingleton<IUpdateInstaller>(sp => new UpdateInstaller(new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(15) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
         // The host registers IAppLifecycle: only it knows how to close the app.
         services.AddSingleton(sp => new UpdateService(AppVersion.Current, sp.GetRequiredService<IUpdateSource>(), sp.GetRequiredService<IUpdateInstaller>(), sp.GetRequiredService<IAppLifecycle>()));
         services.AddSingleton<IOpponentRepository, OpponentRepository>();

@@ -65,11 +65,15 @@ public sealed class UpdateServiceTests
         public void Launch(string installerPath) => Launched = installerPath;
     }
 
-    private sealed class FakeLifecycle : IAppLifecycle
+    private sealed class FakeLifecycle(Exception? error = null) : IAppLifecycle
     {
         public bool ShutDown { get; private set; }
 
-        public void Shutdown() => ShutDown = true;
+        public void Shutdown()
+        {
+            if (error is not null) throw error;
+            ShutDown = true;
+        }
     }
 
     private static UpdateService Service(UpdateInfo? latest, string current = "1.0.0", Exception? sourceError = null, FakeInstaller? installer = null, FakeLifecycle? lifecycle = null) =>
@@ -133,6 +137,21 @@ public sealed class UpdateServiceTests
 
         Assert.Equal(@"C:\temp\setup.exe", installer.Launched);
         Assert.True(lifecycle.ShutDown);
+    }
+
+    [Fact]
+    public async Task A_problem_closing_the_app_after_the_installer_started_is_not_reported_as_a_failed_update()
+    {
+        var installer = new FakeInstaller();
+        var service = Service(Newer, installer: installer, lifecycle: new FakeLifecycle(new InvalidOperationException("no window")));
+        await service.CheckAsync();
+
+        await service.UpdateAsync();
+
+        Assert.NotNull(installer.Launched);
+        Assert.Equal(UpdateState.Failed, service.State);
+        Assert.Contains("installer has started", service.Error);
+        Assert.DoesNotContain("did not install", service.Error);
     }
 
     [Fact]
