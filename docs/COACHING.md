@@ -3,7 +3,7 @@
 How the app explains blunders. Two scripts share the explanation code in `analysis/explain.py`:
 
 - `analysis/coach.py` picks the 100 costliest blunders for the puzzle cards (table `coach_notes`).
-- `analysis/explain_blunders.py` explains every blunder in the daily drill's pool (table `blunder_notes`). It runs at depth 12, is resumable, and `refresh.py` runs it after tagging new blunders. The drill shows the note once a card is answered.
+- `analysis/explain_blunders.py` explains every one of your blunders (table `blunder_notes`). It runs at depth 12, is resumable, and `refresh.py` runs it after tagging new blunders. The drill shows the note once a card is answered, and the focus card on Home groups the notes into kinds of mistake (`LeakCatalog`) to pick what to work on. Explaining a full history of about 6,000 blunders takes around 7 minutes, once.
 
 ## Why this changed
 

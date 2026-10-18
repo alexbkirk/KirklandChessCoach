@@ -76,7 +76,7 @@ db.close()
 if pending:
     run("analyze.py", "--threads", "4")
     run("tag_blunders.py", "--threads", "4")   # tags only blunders that have no tags yet
-    run("explain_blunders.py", "--threads", "4")   # explains only drill blunders that have no note yet
+    run("explain_blunders.py", "--threads", "4")   # explains only blunders that have no note yet
 if (new or pending) and not a.skip_coach:
     run("coach.py", "--top", "100")
 elif a.skip_coach:

@@ -1,11 +1,12 @@
+@using System.Globalization
 @using ChessCoach.Core.Domain
-@inject WeeklyFocusService Focus
+@inject WeeklyFocusService FocusService
 
-<div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
+<div class="d-flex align-baseline justify-space-between flex-wrap gap-2 mb-3">
     <MudText Typo="Typo.h6">Your focus</MudText>
-    @if (_focus is not null)
+    @if (_focus is { From: { } from, To: { } to })
     {
-        <MudText Typo="Typo.caption">based on @_focus.GameCount games from @_focus.Window</MudText>
+        <MudText Typo="Typo.caption" Class="focus-muted">@Capitalised(_focus.Window) · @Month(from) – @Month(to)</MudText>
     }
 </div>
 
@@ -17,58 +18,128 @@ else if (_focus is null)
 {
     <MudProgressLinear Indeterminate="true" />
 }
-else if (_focus.TopKey is null)
+else if (_focus.Focus is null)
 {
-    <MudAlert Severity="Severity.Info">No blunders from balanced positions in this window. Nothing to focus on yet.</MudAlert>
+    <MudAlert Severity="Severity.Info">
+        @(_focus.UnexplainedCount > 0
+            ? "Your recent blunders aren't explained yet. Check for new games to explain them."
+            : "No blunders with a clear tactic behind them in these games. Nothing to focus on yet.")
+    </MudAlert>
 }
 else
 {
+    var focus = _focus.Focus;
+    var top = _focus.Top;
+    var max = Math.Max(1, top.Max(t => t.Count));
     <div class="focus-grid">
         <div>
-            <MudText Typo="Typo.subtitle1"><b>@_focus.Title</b></MudText>
-            <MudText Typo="Typo.body2" Class="mb-2">@_focus.Description</MudText>
-            <MudText Typo="Typo.body2" Class="mb-2"><b>What to do.</b> @_focus.Advice</MudText>
-            @if (_focus.Examples.Count > 0)
+            <MudText Typo="Typo.h5" Class="mb-1">@focus.Label</MudText>
+            <MudText Typo="Typo.body1" Class="mb-3"><b>@top[0].Count</b> of the @(_focus.BlunderCount - _focus.OtherCount) blunders in these games that came down to a single tactic.</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">@focus.Description</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2"><b>Try this:</b> @focus.TryThis</MudText>
+            @if (_focus.OverallTop is { } overall)
             {
-                <MudText Typo="Typo.caption">Recent examples</MudText>
-                <ul class="focus-examples">
-                    @foreach (var example in _focus.Examples)
-                    {
-                        <li>@example.Date.ToString("yyyy-MM-dd") vs <a href="@OpponentLinks.For(example.Opponent)">@example.Opponent</a>, move @example.Move · <a href="@example.Url" target="_blank" rel="noopener">view game</a></li>
-                    }
-                </ul>
+                <MudText Typo="Typo.caption" Class="focus-muted">
+                    @(overall.Key == focus.Key
+                        ? "It is also your most common kind across all your games."
+                        : $"Across all your games, the most common kind is {overall.Label.ToLowerInvariant()}.")
+                </MudText>
             }
         </div>
         <div>
-            <MudSimpleTable Dense="true">
-                <thead>
-                    <tr><th>Leak</th><th class="text-right">Blunders</th><th>Against your usual</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (var stat in _focus.Stats)
-                    {
-                        <tr style="@(stat.Key == _focus.TopKey ? "font-weight:600" : "")">
-                            <td>@stat.Label</td>
-                            <td class="text-right">@stat.Count</td>
-                            <td>@DeltaText(stat.DeltaPercent)</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
-            <MudText Typo="Typo.caption" Class="mt-1">A blunder can have several tags. Positional slips are shown but never chosen as the focus.</MudText>
+            <div class="eyebrow mb-2">Most common in these games</div>
+            @foreach (var kind in top)
+            {
+                <div class="leak-row">
+                    <span class="leak-label">@kind.Label</span>
+                    <span class="leak-bar"><span style="width:@Share(kind.Count, max)%"></span></span>
+                    <span class="leak-count">@kind.Count</span>
+                </div>
+            }
+            @if (_focus.OtherCount > 0)
+            {
+                <MudText Typo="Typo.caption" Class="focus-muted d-block mt-2">@_focus.OtherCount more had no single tactic behind them.</MudText>
+            }
+            @if (_focus.UnexplainedCount > 0)
+            {
+                <MudText Typo="Typo.caption" Class="focus-muted d-block">@_focus.UnexplainedCount aren't explained yet: Check for new games explains them.</MudText>
+            }
         </div>
     </div>
+
+    @if (_focus.Examples.Count > 0)
+    {
+        <div class="eyebrow mt-5 mb-2">Recent examples</div>
+        <div class="focus-example-list">
+            @for (var i = 0; i < _focus.Examples.Count; i++)
+            {
+                var index = i;
+                var example = _focus.Examples[i];
+                <div class="focus-example @(index == _practising ? "selected" : "")">
+                    <div>
+                        <div><b>@example.Date.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</b> vs @example.Opponent · move @example.Move · you played @example.PlayedSan</div>
+                        @if (example.Headline is not null)
+                        {
+                            <div class="focus-muted">@example.Headline</div>
+                        }
+                    </div>
+                    <div class="d-flex gap-2 align-center">
+                        @if (example.BestUci is not null)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => Practise(index)">Practise</MudButton>
+                        }
+                        <a href="@example.Url" target="_blank" rel="noopener">game</a>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (_practising is { } p && p < _focus.Examples.Count)
+        {
+            var example = _focus.Examples[p];
+            <div class="puzzle-layout mt-4">
+                <div class="puzzle-board">
+                    <ChessBoard @ref="_board" Fen="@example.Fen" Orientation="@example.Color" MovableColor="@(_answer is null ? example.Color : null)"
+                                Marks="@Marks(example)" OnMove="AnswerAsync" />
+                </div>
+                <div class="puzzle-side">
+                    <MudText Typo="Typo.body1" Class="mb-2"><b>@(example.Color == "white" ? "White" : "Black") to move.</b> In the game you played @example.PlayedSan. Find a better move.</MudText>
+                    @if (_answer is not null)
+                    {
+                        <MudAlert Severity="@(_answer.Value ? Severity.Success : Severity.Warning)" Class="mb-2">
+                            @(_answer.Value ? "That's the engine's move." : $"Not quite. The engine's move is {example.BestSan} (green arrow).")
+                        </MudAlert>
+                        @if (example.Headline is not null)
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-3">@example.Headline</MudText>
+                        }
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Outlined" OnClick="TryAgainAsync">Try again</MudButton>
+                            <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
+                    }
+                </div>
+            </div>
+        }
+    }
 }
 
 @code {
     private WeeklyFocus? _focus;
     private string? _error;
+    private int? _practising;
+    private bool? _answer;
+    private ChessBoard? _board;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _focus = await Task.Run(() => Focus.GetAsync());
+            _focus = await Task.Run(() => FocusService.GetAsync());
         }
         catch (Exception ex)
         {
@@ -76,11 +147,37 @@ else
         }
     }
 
-    private static string DeltaText(double? delta) => delta switch
+    private void Practise(int index)
     {
-        null => "no history yet",
-        var d when Math.Abs(d.Value) < 5 => "about usual",
-        var d when d.Value > 0 => $"up {d.Value:0}% on your usual",
-        var d => $"down {-d.Value:0}% on your usual",
-    };
+        _practising = index;
+        _answer = null;
+    }
+
+    private void Close()
+    {
+        _practising = null;
+        _answer = null;
+    }
+
+    private async Task AnswerAsync(BoardMove move)
+    {
+        if (_practising is not { } p || _focus is null) return;
+        _answer = move.Uci == _focus.Examples[p].BestUci;
+        if (_board is not null) await _board.ResetAsync();
+    }
+
+    private async Task TryAgainAsync()
+    {
+        _answer = null;
+        if (_board is not null) await _board.ResetAsync();
+    }
+
+    private IReadOnlyList<BoardMark> Marks(FocusExample example) =>
+        _answer is null || example.BestUci is not { Length: >= 4 } best ? [] : [new BoardMark(best[..2], "green", best[2..4])];
+
+    private static string Month(DateOnly date) => date.ToString("MMM yyyy", CultureInfo.InvariantCulture);
+
+    private static string Capitalised(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    private static string Share(int part, int whole) => (100.0 * part / whole).ToString("0", CultureInfo.InvariantCulture);
 }
