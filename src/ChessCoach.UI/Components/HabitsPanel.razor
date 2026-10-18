@@ -1,0 +1,86 @@
+@using System.Globalization
+@using ChessCoach.Core.Stats
+@inject StatsService StatsService
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_habits is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <div class="stats-grid">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">How games end</MudText>
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Ending</th><th class="text-right">Games</th><th class="text-right">You won</th><th class="text-right">You lost</th></tr></thead>
+                <tbody>
+                    @foreach (var row in _habits.Endings)
+                    {
+                        <tr><td>@row.Label</td><td class="text-right">@row.Record.Games</td><td class="text-right">@row.Record.Wins</td><td class="text-right">@row.Record.Losses</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Win rate by game of the day</MudText>
+            @foreach (var row in _habits.GameOfDay)
+            {
+                <Bar Row="row" />
+            }
+            <MudText Typo="Typo.caption">Position within the day. Faded bars have fewer than @HabitsCalculator.ReliableGames games.</MudText>
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Win rate by hour (UTC)</MudText>
+            @foreach (var row in _habits.Hours)
+            {
+                <Bar Row="row" />
+            }
+            <MudText Typo="Typo.caption">3-hour buckets of the start time. Faded bars have fewer than @HabitsCalculator.ReliableGames games.</MudText>
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Win rate by opponent rating</MudText>
+            @foreach (var row in _habits.RatingGap)
+            {
+                <Bar Row="row" />
+            }
+            <MudText Typo="Typo.caption">Opponent rating minus yours. Faded bars have fewer than @HabitsCalculator.ReliableGames games.</MudText>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    [Parameter] public string? ColorFilter { get; set; }
+
+    private Habits? _habits;
+    private string? _error;
+    private bool _loaded;
+    private string? _loadedFor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loaded && _loadedFor == ColorFilter) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _habits = await StatsService.GetHabitsAsync(ColorFilter);
+            _loaded = true;
+            _loadedFor = ColorFilter;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+}

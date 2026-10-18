@@ -1,0 +1,16 @@
+@using System.Globalization
+@using ChessCoach.Core.Stats
+
+<div class="habit-bar @(Row.Record.Games < HabitsCalculator.ReliableGames ? "faded" : "")">
+    <span class="habit-label">@Row.Label</span>
+    <span class="habit-track"><span class="habit-fill" style="width:@Width%"></span></span>
+    <span class="habit-value">@Percent · @Row.Record.Games</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public HabitRow Row { get; set; } = null!;
+
+    private double Width => Row.Record.Games == 0 ? 0 : Math.Round(Row.Record.WinPercent, 1);
+
+    private string Percent => Row.Record.Games == 0 ? "–" : Row.Record.WinPercent.ToString("0", CultureInfo.InvariantCulture) + "%";
+}
