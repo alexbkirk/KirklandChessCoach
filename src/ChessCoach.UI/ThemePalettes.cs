@@ -43,6 +43,7 @@ public static class ThemePalettes
         H4 = new H4Typography { FontFamily = headingFont, FontWeight = "500" },
         H5 = new H5Typography { FontFamily = headingFont, FontWeight = "500" },
         H6 = new H6Typography { FontFamily = headingFont, FontWeight = "600" },
+        Button = new ButtonTypography { TextTransform = "none", FontWeight = "600" },
     };
 
     private static (PaletteLight Light, PaletteDark Dark) Dark(string background, string surface, string primary, string secondary, string text, string muted, string divider, string onPrimary) =>
