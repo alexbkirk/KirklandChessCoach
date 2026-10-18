@@ -1,4 +1,5 @@
 using ChessCoach.Core.Abstractions;
+using ChessCoach.Core.Settings;
 using ChessCoach.Core.Setup;
 using ChessCoach.Infrastructure.Data;
 using Dapper;
@@ -9,7 +10,7 @@ namespace ChessCoach.Infrastructure.Setup;
 /// <summary>Works out the setup status from the database and the data folder, and saves the chosen username.</summary>
 public sealed class SetupService(IAppSettingsStore settings, IGameRepository games, SqliteConnectionFactory connections, IOptions<ChessCoachOptions> options) : ISetupService
 {
-    public const string UsernameKey = "chess_com_username";
+    public const string UsernameKey = AppSettingKeys.Username;
     public const string ImportFinishedKey = "import_finished";
 
     public async Task<SetupStatus> GetStatusAsync(CancellationToken cancellationToken = default)
@@ -17,7 +18,7 @@ public sealed class SetupService(IAppSettingsStore settings, IGameRepository gam
         var username = await settings.GetAsync(UsernameKey, cancellationToken);
         var dataDirectory = options.Value.EffectiveDataDirectory;
         var missing = EngineCatalog.Missing(path => File.Exists(Path.Combine(dataDirectory, path)));
-        var summary = await games.GetSummaryAsync(cancellationToken);
+        var summary = await games.GetOverallSummaryAsync(cancellationToken);
         var finished = await settings.GetAsync(ImportFinishedKey, cancellationToken) switch
         {
             "true" => true,

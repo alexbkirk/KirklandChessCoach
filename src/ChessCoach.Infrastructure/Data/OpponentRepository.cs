@@ -55,8 +55,10 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections, Time
                    100.0 * SUM(CASE WHEN class = 'blunder' THEN 1 ELSE 0 END) / COUNT(*) AS BlunderPercent
             FROM moves
             WHERE COALESCE(is_last, 0) = 0
+              AND (@tc IS NULL OR game_id IN (SELECT id FROM games WHERE timeClass = @tc))
             GROUP BY is_mine, Phase
             """,
+            new { tc = timeClass?.Current },
             cancellationToken: cancellationToken))).ToList();
         return new PhaseBaseline(
             rows.Where(r => r.IsMine != 0).ToDictionary(r => r.Phase, r => new PhaseRate(r.Moves, r.AvgCpLoss, r.BlunderPercent)),

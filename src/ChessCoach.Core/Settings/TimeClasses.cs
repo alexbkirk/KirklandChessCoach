@@ -2,6 +2,12 @@ using ChessCoach.Core.Abstractions;
 
 namespace ChessCoach.Core.Settings;
 
+/// <summary>Keys of small settings that more than one part of the app reads.</summary>
+public static class AppSettingKeys
+{
+    public const string Username = "chess_com_username";
+}
+
 /// <summary>chess.com's time classes the app can hold: rapid always, blitz and bullet when the player turns them on.</summary>
 public static class TimeClasses
 {
@@ -64,18 +70,28 @@ public sealed class TimeClassSettings(IAppSettingsStore store)
         var after = TimeClasses.Normalize(classes);
         await store.SetAsync(ImportKey, TimeClasses.Join(after), cancellationToken);
         if (after.Except(before).Any()) await store.SetAsync(BackfillKey, "1", cancellationToken);
-        else if (after.Count == 1) await ClearBackfillAsync(cancellationToken);   // only rapid left: nothing new to search for
+        else if (after.Count == 1) await ClearBackfillAsync(cancellationToken: cancellationToken);   // only rapid left: nothing new to search for
         return after;
     }
 
-    public Task ClearBackfillAsync(CancellationToken cancellationToken = default) => store.SetAsync(BackfillKey, "0", cancellationToken);
+    /// <summary>
+    /// Clears the "search every month" flag. When <paramref name="searchedClasses"/> is given (what a finishing import searched), the flag
+    /// stays if the classes have changed since the import started, so a class added meanwhile is still searched by the next import.
+    /// </summary>
+    public async Task ClearBackfillAsync(IReadOnlyList<string>? searchedClasses = null, CancellationToken cancellationToken = default)
+    {
+        if (searchedClasses is not null && !(await GetImportClassesAsync(cancellationToken)).SequenceEqual(searchedClasses)) return;
+        await store.SetAsync(BackfillKey, "0", cancellationToken);
+    }
 
     /// <summary>The class being shown: "all", or one of the imported classes; rapid when the saved value is missing or no longer imported.</summary>
     public async Task<string> GetViewAsync(CancellationToken cancellationToken = default)
     {
         var saved = await store.GetAsync(ViewKey, cancellationToken);
         var imported = await GetImportClassesAsync(cancellationToken);
-        return saved == TimeClasses.All || (saved is not null && imported.Contains(saved)) ? saved! : TimeClasses.Rapid;
+        // "all" only means something once there is more than one class to combine
+        var allowed = (saved == TimeClasses.All && imported.Count > 1) || (saved is not null && saved != TimeClasses.All && imported.Contains(saved));
+        return allowed ? saved! : TimeClasses.Rapid;
     }
 
     public Task SetViewAsync(string view, CancellationToken cancellationToken = default) =>
@@ -133,7 +149,15 @@ public sealed class TimeClassView(TimeClassSettings settings)
     /// <summary>Changes which classes are imported. If the class being viewed is no longer imported, the view goes back to rapid.</summary>
     public async Task SetImportedAsync(IEnumerable<string> classes)
     {
-        Imported = await settings.SetImportClassesAsync(classes);
+        try
+        {
+            Imported = await settings.SetImportClassesAsync(classes);
+        }
+        catch (Exception)
+        {
+            // not saved: keep what was imported before rather than show a choice that will not last
+        }
+
         if (Current is not null && !Imported.Contains(Current)) await SelectAsync(TimeClasses.Rapid);
         else Changed?.Invoke();
     }

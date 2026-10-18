@@ -4,7 +4,8 @@
 @inject AppNavigation AppNav
 @inject BoardView View
 @inject TimeClassView TimeView
-@inject ISetupService SetupFlow
+@inject IAppSettingsStore SettingsStore
+@using ChessCoach.Core.Abstractions
 @using ChessCoach.Core.Settings
 @using Microsoft.AspNetCore.Components.Web
 
@@ -40,8 +41,11 @@
                 </div>
             }
             <div class="app-user">
-                <span>@_username</span>
-                <span aria-hidden="true">·</span>
+                @if (_username.Length > 0)
+                {
+                    <span>@_username</span>
+                    <span aria-hidden="true">·</span>
+                }
                 @if (TimeView.Imported.Count > 1)
                 {
                     <label class="visually-hidden" for="time-class">Time control shown</label>
@@ -78,18 +82,11 @@
     {
         Theme.Changed += OnThemeChanged;
         AppNav.Changed += OnNavigationChanged;
-        View.Changed += OnNavigationChanged;
-        TimeView.Changed += OnNavigationChanged;
+        View.Changed += OnStateChanged;
+        TimeView.Changed += OnStateChanged;
         await View.LoadAsync();
         await TimeView.LoadAsync();
-        try
-        {
-            _username = (await SetupFlow.GetStatusAsync()).Username ?? "";
-        }
-        catch (Exception)
-        {
-            // the name is only a label
-        }
+        await LoadUsernameAsync();
         await Theme.LoadAsync();
         Apply();
     }
@@ -107,7 +104,29 @@
         _theme = ThemePalettes.For(_themeId);
     }
 
-    private void OnNavigationChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnNavigationChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadUsernameAsync();   // the name can be chosen or changed on the setup page
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>The name in the header is the saved username. It is only a label, so a failed read leaves it as it was.</summary>
+    private async Task LoadUsernameAsync()
+    {
+        try
+        {
+            _username = (await SettingsStore.GetAsync(AppSettingKeys.Username))?.Trim() ?? "";
+        }
+        catch (Exception)
+        {
+            // keep the last name
+        }
+    }
 
     /// <summary>In focus mode the board fills the window's height, leaving room for the header, title and the controls under it; otherwise it is the size the player chose.</summary>
     private string BoardWidth => View.FocusMode ? "clamp(320px, calc(100vh - 250px), 900px)" : $"{View.Size}px";
@@ -123,7 +142,7 @@
     {
         Theme.Changed -= OnThemeChanged;
         AppNav.Changed -= OnNavigationChanged;
-        View.Changed -= OnNavigationChanged;
-        TimeView.Changed -= OnNavigationChanged;
+        View.Changed -= OnStateChanged;
+        TimeView.Changed -= OnStateChanged;
     }
 }

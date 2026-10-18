@@ -151,4 +151,31 @@ public sealed class TimeClassFilterTests
         Assert.Equal(["r1"], rapid.Select(g => g.GameId));
         Assert.Equal(2, all.Count);
     }
+
+    [Fact]
+    public async Task The_opponent_baseline_follows_the_selected_time_class()
+    {
+        using var db = await SetUpAsync();
+
+        var rapid = await new OpponentRepository(db.Connections, await ViewAsync("rapid")).LoadBaselineAsync();
+        var all = await new OpponentRepository(db.Connections, await ViewAsync("all")).LoadBaselineAsync();
+
+        // each game has two of the player's moves, one of them a blunder
+        Assert.Equal(2, rapid.You.Values.Sum(r => r.Moves));
+        Assert.Equal(4, all.You.Values.Sum(r => r.Moves));
+    }
+
+    [Fact]
+    public async Task Setup_and_diagnostics_count_every_game_whatever_is_being_viewed()
+    {
+        using var db = await SetUpAsync();
+        var repository = new GameRepository(db.Connections, await ViewAsync("bullet"));   // no bullet games
+
+        var viewed = await repository.GetSummaryAsync();
+        var overall = await repository.GetOverallSummaryAsync();
+
+        Assert.Equal(0, viewed.GameCount);
+        Assert.Equal(2, overall.GameCount);
+        Assert.Equal(4, overall.MoveCount);
+    }
 }

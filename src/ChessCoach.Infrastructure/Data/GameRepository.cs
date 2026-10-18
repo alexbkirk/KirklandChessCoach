@@ -7,7 +7,11 @@ namespace ChessCoach.Infrastructure.Data;
 
 public sealed class GameRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IGameRepository
 {
-    public async Task<DatabaseSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
+    public Task<DatabaseSummary> GetSummaryAsync(CancellationToken cancellationToken = default) => LoadAsync(timeClass?.Current, cancellationToken);
+
+    public Task<DatabaseSummary> GetOverallSummaryAsync(CancellationToken cancellationToken = default) => LoadAsync(null, cancellationToken);
+
+    private async Task<DatabaseSummary> LoadAsync(string? tc, CancellationToken cancellationToken)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
 
@@ -20,7 +24,7 @@ public sealed class GameRepository(SqliteConnectionFactory connections, TimeClas
                    (SELECT CAST(MIN(date) AS TEXT) FROM games WHERE (@tc IS NULL OR timeClass = @tc)) AS FirstGameDate,
                    (SELECT CAST(MAX(date) AS TEXT) FROM games WHERE (@tc IS NULL OR timeClass = @tc)) AS LastGameDate
             """,
-            new { tc = timeClass?.Current },
+            new { tc },
             cancellationToken: cancellationToken));
         return new DatabaseSummary(row.GameCount, row.MoveCount, row.FirstGameDate, row.LastGameDate);
     }

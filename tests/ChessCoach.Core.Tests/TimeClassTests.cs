@@ -184,4 +184,51 @@ public sealed class TimeClassTests
 
         public Task SetAsync(string key, string value, CancellationToken cancellationToken = default) => throw new IOException("db");
     }
+
+    [Fact]
+    public async Task A_finishing_import_clears_the_backfill_only_when_the_classes_are_still_the_ones_it_searched()
+    {
+        var settings = new TimeClassSettings(new MemoryStore());
+        await settings.SetImportClassesAsync(["blitz"]);
+        var searched = (await settings.GetImportPlanAsync()).Classes;   // the import starts with rapid and blitz
+
+        await settings.SetImportClassesAsync(["blitz", "bullet"]);      // bullet is turned on while it runs
+        await settings.ClearBackfillAsync(searched);                    // the import finishes
+
+        Assert.True((await settings.GetImportPlanAsync()).Backfill);    // the next import still searches for bullet
+
+        await settings.ClearBackfillAsync((await settings.GetImportPlanAsync()).Classes);
+        Assert.False((await settings.GetImportPlanAsync()).Backfill);
+    }
+
+    [Fact]
+    public async Task A_saved_view_of_all_means_rapid_while_only_rapid_is_imported()
+    {
+        var settings = new TimeClassSettings(new MemoryStore());
+        await settings.SetViewAsync("all");
+
+        Assert.Equal("rapid", await settings.GetViewAsync());
+
+        await settings.SetImportClassesAsync(["blitz"]);
+        Assert.Equal("all", await settings.GetViewAsync());
+    }
+
+    [Fact]
+    public async Task A_failed_save_of_the_imported_classes_keeps_the_previous_ones_and_does_not_throw()
+    {
+        var store = new FailingWriteStore();
+        var view = new TimeClassView(new TimeClassSettings(store));
+        await view.LoadAsync();
+
+        await view.SetImportedAsync(["blitz"]);
+
+        Assert.Equal(["rapid"], view.Imported);
+    }
+
+    private sealed class FailingWriteStore : IAppSettingsStore
+    {
+        public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
+
+        public Task SetAsync(string key, string value, CancellationToken cancellationToken = default) => throw new IOException("write");
+    }
 }

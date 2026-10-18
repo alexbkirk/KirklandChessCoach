@@ -29,7 +29,7 @@ public sealed class ImportRunnerProcessTests : IDisposable
         throw new InvalidOperationException("analysis\\.venv was not found: run scripts\\setup.ps1 before the tests.");
     }
 
-    private ImportRunner Runner(string script)
+    private ImportRunner Runner(string script, ChessCoach.Core.Settings.TimeClassSettings? timeClasses = null)
     {
         var analysis = Path.Combine(_root, "analysis");
         Directory.CreateDirectory(analysis);
@@ -39,7 +39,7 @@ public sealed class ImportRunnerProcessTests : IDisposable
             DataDirectory = Path.Combine(_root, "data"),
             AnalysisDirectory = analysis,
             PythonPath = DevelopmentPython(),
-        }));
+        }), timeClasses);
     }
 
     [Fact]
@@ -115,5 +115,61 @@ public sealed class ImportRunnerProcessTests : IDisposable
             updates.Add(value);
             onFirst?.Invoke();
         }
+    }
+
+    private sealed class MemoryStore : ChessCoach.Core.Abstractions.IAppSettingsStore
+    {
+        public Dictionary<string, string> Values { get; } = [];
+
+        public Task<string?> GetAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Values.TryGetValue(key, out var v) ? v : null);
+
+        public Task SetAsync(string key, string value, CancellationToken cancellationToken = default)
+        {
+            Values[key] = value;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task The_time_classes_and_the_backfill_are_passed_to_the_script_and_the_backfill_is_cleared_after_success()
+    {
+        var settings = new ChessCoach.Core.Settings.TimeClassSettings(new MemoryStore());
+        await settings.SetImportClassesAsync(["blitz"]);
+        var runner = Runner("""
+            import json, sys
+            assert sys.argv[sys.argv.index("--time-classes") + 1] == "rapid,blitz", sys.argv
+            assert "--backfill" in sys.argv, sys.argv
+            print(json.dumps({"stage": "done", "done": 1, "total": 1, "message": "Done."}), flush=True)
+            """, settings);
+
+        await runner.RunAsync("xkirke");
+
+        Assert.False((await settings.GetImportPlanAsync()).Backfill);
+    }
+
+    [Fact]
+    public async Task A_failing_import_keeps_the_backfill_for_the_next_run()
+    {
+        var settings = new ChessCoach.Core.Settings.TimeClassSettings(new MemoryStore());
+        await settings.SetImportClassesAsync(["bullet"]);
+        var runner = Runner("import sys\nsys.exit(3)\n", settings);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync("xkirke"));
+
+        Assert.True((await settings.GetImportPlanAsync()).Backfill);
+    }
+
+    [Fact]
+    public async Task Without_time_class_settings_only_rapid_is_asked_for_and_no_backfill()
+    {
+        var runner = Runner("""
+            import json, sys
+            assert sys.argv[sys.argv.index("--time-classes") + 1] == "rapid", sys.argv
+            assert "--backfill" not in sys.argv, sys.argv
+            print(json.dumps({"stage": "done", "done": 1, "total": 1, "message": "Done."}), flush=True)
+            """);
+
+        await runner.RunAsync("xkirke");
     }
 }

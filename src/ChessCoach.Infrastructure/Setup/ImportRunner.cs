@@ -74,7 +74,7 @@ public sealed class ImportRunner(IOptions<ChessCoachOptions> options, TimeClassS
         }
 
         // the search of every month finished, so the next import can go back to looking only from the latest game
-        if (plan.Backfill && timeClasses is not null) await timeClasses.ClearBackfillAsync(CancellationToken.None);
+        if (plan.Backfill && timeClasses is not null) await timeClasses.ClearBackfillAsync(plan.Classes, CancellationToken.None);
     }
 
     /// <summary>One progress line as an update, or null when the line is not a progress object.</summary>
