@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ChessCoach.Core\ChessCoach.Core.csproj" />
+    <ProjectReference Include="..\..\src\ChessCoach.UI\ChessCoach.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>
