@@ -68,6 +68,7 @@ public partial class App : Application
         builder.Services.AddWpfBlazorWebView();
         builder.Services.AddMudServices();
         builder.Services.AddScoped<ChessCoach.UI.ChessRules>();
+        builder.Services.AddScoped<ChessCoach.UI.ThemeState>();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif

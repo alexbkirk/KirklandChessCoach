@@ -1,27 +1,56 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject ThemeState Theme
 
-<MudThemeProvider IsDarkMode="true" />
+<MudThemeProvider Theme="_theme" IsDarkMode="Theme.Current.Dark" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="1" Dense="true">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="() => _drawerOpen = !_drawerOpen" />
-        <MudText Typo="Typo.h6" Class="ml-2">ChessCoach</MudText>
-        <MudSpacer />
-        <MudText Typo="Typo.caption">xkirke · rapid</MudText>
-    </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
-        <NavMenu />
-    </MudDrawer>
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4">
+<div class="app-shell theme-@Theme.Current.Id">
+    <header class="app-header">
+        <div class="app-brand">
+            <span class="app-logo" aria-hidden="true">♞</span>
+            <span class="app-name">ChessCoach</span>
+        </div>
+        <nav class="app-nav" aria-label="Main">
+            <NavLink class="nav-pill" ActiveClass="active" href="" Match="NavLinkMatch.All">Home</NavLink>
+            <NavLink class="nav-pill" ActiveClass="active" href="stats">Stats</NavLink>
+            <NavLink class="nav-pill" ActiveClass="active" href="settings">Settings</NavLink>
+        </nav>
+        <div class="app-user">xkirke · rapid</div>
+    </header>
+    <main class="app-main">
+        @if (Theme.Loaded)
+        {
             @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        }
+    </main>
+</div>
 
 @code {
-    private bool _drawerOpen = true;
+    private MudTheme _theme = ThemePalettes.For(Themes.Default.Id);
+    private string _themeId = Themes.Default.Id;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Theme.Changed += OnThemeChanged;
+        await Theme.LoadAsync();
+        Apply();
+    }
+
+    private void OnThemeChanged()
+    {
+        Apply();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void Apply()
+    {
+        if (_themeId == Theme.Current.Id) return;
+        _themeId = Theme.Current.Id;
+        _theme = ThemePalettes.For(_themeId);
+    }
+
+    public void Dispose() => Theme.Changed -= OnThemeChanged;
 }
