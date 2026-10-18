@@ -75,7 +75,7 @@ else
             {
                 var index = i;
                 var example = _focus.Examples[i];
-                <div class="focus-example @(index == _practising ? "selected" : "")">
+                <div class="focus-example @(index == _practicing ? "selected" : "")">
                     <div>
                         <div><b>@example.Date.ToString("d MMM yyyy", CultureInfo.InvariantCulture)</b> vs @example.Opponent · move @example.Move · you played @example.PlayedSan</div>
                         @if (example.Headline is not null)
@@ -86,7 +86,7 @@ else
                     <div class="d-flex gap-2 align-center">
                         @if (example.BestUci is not null)
                         {
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => Practise(index)">Practise</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => Practice(index)">Practice</MudButton>
                         }
                         <a href="@example.Url" target="_blank" rel="noopener">game</a>
                     </div>
@@ -94,7 +94,7 @@ else
             }
         </div>
 
-        @if (_practising is { } p && p < _focus.Examples.Count && _focus.Examples[p] is { BestUci: { } bestUci } practiceExample)
+        @if (_practicing is { } p && p < _focus.Examples.Count && _focus.Examples[p] is { BestUci: { } bestUci } practiceExample)
         {
             <div class="mt-4">
                 <PracticePosition @key="@($"{p}-{_run}")" Fen="@practiceExample.Fen" Side="@practiceExample.Color" Accept="@([bestUci])" BestUci="@bestUci" BestSan="@practiceExample.BestSan"
@@ -114,7 +114,7 @@ else
 @code {
     private WeeklyFocus? _focus;
     private string? _error;
-    private int? _practising;
+    private int? _practicing;
     private int _run;
 
     protected override async Task OnInitializedAsync()
@@ -129,15 +129,15 @@ else
         }
     }
 
-    private void Practise(int index)
+    private void Practice(int index)
     {
-        _practising = index;
+        _practicing = index;
         _run++;
     }
 
     private void Close()
     {
-        _practising = null;
+        _practicing = null;
     }
 
 
