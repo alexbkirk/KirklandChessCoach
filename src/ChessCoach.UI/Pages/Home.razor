@@ -32,7 +32,11 @@ else
         </div>
     }
 
-    <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-6" @bind-ActivePanelIndex="_tab">
+    <div class="mb-4">
+        <RefreshPanel OnFinished="ReloadAsync" />
+    </div>
+
+    <MudTabs @key="_reload" Elevation="0" Rounded="true" TabPanelsClass="pt-6" @bind-ActivePanelIndex="_tab">
         <MudTabPanel Text="Today">
             <div class="section-gap">
                 <div class="today-grid">
@@ -76,6 +80,14 @@ else
     private DatabaseSummary? _summary;
     private string? _error;
     private int _tab;
+    private int _reload;
+
+    /// <summary>New games arrived: refresh the headline numbers and rebuild the tabs, so they show the new data.</summary>
+    private async Task ReloadAsync()
+    {
+        _summary = await Games.GetSummaryAsync();
+        _reload++;
+    }
 
     protected override async Task OnInitializedAsync()
     {

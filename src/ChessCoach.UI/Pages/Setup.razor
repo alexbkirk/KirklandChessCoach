@@ -4,7 +4,8 @@
 @using System.Globalization
 @inject ISetupService SetupFlow
 @inject IEngineInstaller Engines
-@inject IImportRunner Importer
+@inject ImportCoordinator Coordinator
+@implements IDisposable
 @inject NavigationManager Navigation
 
 <PageTitle>Set up · ChessCoach</PageTitle>
@@ -88,29 +89,8 @@ else
                 This downloads every rapid game you have played on chess.com and analyses it. A few thousand games can take several hours.
                 You can close ChessCoach at any time: the next import carries on where this one stopped.
             </MudText>
-            @if (_importBusy)
-            {
-                <MudText Typo="Typo.body2" Class="mb-1">@_importStage</MudText>
-                @if (_importTotal > 0)
-                {
-                    <MudProgressLinear Value="@(100.0 * _importDone / _importTotal)" Color="Color.Primary" Class="mb-2" />
-                    <MudText Typo="Typo.caption" Class="mb-3">@_importDone.ToString("N0", CultureInfo.InvariantCulture) of @_importTotal.ToString("N0", CultureInfo.InvariantCulture)</MudText>
-                }
-                else
-                {
-                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
-                }
-                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="CancelImport">Pause</MudButton>
-            }
-            else if (_importMessage is not null)
-            {
-                <MudAlert Severity="Severity.Info" Class="mb-3">@_importMessage</MudAlert>
-            }
-            @if (_importError is not null)
-            {
-                <MudAlert Severity="Severity.Error" Class="mb-3">@_importError</MudAlert>
-            }
-            @if (!_importBusy && !_status.ImportDone)
+            <ImportStatus />
+            @if (!Coordinator.IsRunning && !_status.ImportDone)
             {
                 @if (_status.GameCount > 0)
                 {
@@ -119,11 +99,11 @@ else
                         @_status.UnanalysedGames.ToString("N0", CultureInfo.InvariantCulture) still to analyse.
                     </MudText>
                 }
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanImport)" OnClick="StartImportAsync">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanImport)" OnClick="StartImport">
                     @(_status.GameCount > 0 ? "Carry on with the import" : "Start the import")
                 </MudButton>
             }
-            @if (_status.ImportDone && !_importBusy)
+            @if (_status.ImportDone && !Coordinator.IsRunning)
             {
                 <MudAlert Severity="Severity.Success" Dense="true">@ImportDoneText</MudAlert>
             }
@@ -149,21 +129,31 @@ else
     private double _engineProgress;
     private string? _engineError;
 
-    private bool _importBusy;
-    private string _importStage = "";
-    private int _importDone;
-    private int _importTotal;
-    private string? _importMessage;
-    private string? _importError;
-    private CancellationTokenSource? _importCancel;
-
     private string ImportDoneText => _status is { GameCount: > 0 } status
         ? $"{status.GameCount.ToString("N0", CultureInfo.InvariantCulture)} games are in ChessCoach."
         : $"No rapid games were found for {_status?.Username} on chess.com. ChessCoach looks at rapid games (10 minutes or longer).";
 
     private bool CanImport => _status is not null && _status.UsernameChosen && _status.MissingEngines.Count == 0;
 
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _importWasRunning = Coordinator.IsRunning;
+        Coordinator.Changed += OnCoordinatorChanged;
+        await RefreshAsync();
+    }
+
+    private bool _importWasRunning;
+
+    /// <summary>When a run ends, however it ends, reload the status so the counts and the button are right.</summary>
+    private void OnCoordinatorChanged() => _ = InvokeAsync(async () =>
+    {
+        var ended = _importWasRunning && !Coordinator.IsRunning;
+        _importWasRunning = Coordinator.IsRunning;
+        if (ended) await RefreshAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Coordinator.Changed -= OnCoordinatorChanged;
 
     private async Task RefreshAsync()
     {
@@ -215,58 +205,12 @@ else
         }
     }
 
-    private async Task StartImportAsync()
+    private void StartImport()
     {
-        if (_status?.Username is not { } username) return;
-        _importCancel = new CancellationTokenSource();
-        _importBusy = true;
-        _importMessage = null;
-        _importError = null;
-        try
-        {
-            await SetupFlow.MarkImportStartedAsync();
-            var progress = new Progress<ImportProgress>(p =>
-            {
-                _importStage = StageLabel(p.Stage, p.Message);
-                _importDone = p.Done;
-                _importTotal = p.Total;
-                InvokeAsync(StateHasChanged);
-            });
-            await Importer.RunAsync(username, progress, _importCancel.Token);
-            await SetupFlow.MarkImportFinishedAsync();
-            _importMessage = "The import finished.";
-        }
-        catch (OperationCanceledException)
-        {
-            _importMessage = "Paused. Press Carry on with the import any time to pick up where it stopped.";
-        }
-        catch (Exception ex)
-        {
-            _importError = $"The import stopped: {ex.Message}";
-        }
-        finally
-        {
-            _importBusy = false;
-            _importCancel.Dispose();
-            _importCancel = null;
-            await RefreshAsync();
-        }
+        if (_status?.Username is { } username) Coordinator.Start(username, firstImport: true);
     }
 
-    private void CancelImport() => _importCancel?.Cancel();
-
     private void GoHome() => Navigation.NavigateTo("");
-
-    private static string StageLabel(string stage, string message) => stage switch
-    {
-        "fetch" => "Downloading your games from chess.com",
-        "analyze" => "Analysing your games with Stockfish",
-        "tag" => "Finding your blunders",
-        "explain" => "Explaining the blunders",
-        "coach" => "Writing coach notes",
-        "done" => "Finished",
-        _ => message,
-    };
 
     private static string Megabytes(long bytes) => (bytes / 1_000_000.0).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
 }

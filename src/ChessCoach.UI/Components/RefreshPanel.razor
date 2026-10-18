@@ -1,0 +1,53 @@
+@using ChessCoach.Core.Abstractions
+@using ChessCoach.Core.Setup
+@implements IDisposable
+@inject ImportCoordinator Coordinator
+@inject ISetupService SetupFlow
+@inject IClock Clock
+
+<div class="refresh-panel">
+    @if (!Coordinator.IsRunning)
+    {
+        <div class="d-flex align-center flex-wrap gap-3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(_username is null)" OnClick="CheckAsync">Check for new games</MudButton>
+            <MudText Typo="Typo.body2" Class="focus-muted">@LastCheckedText</MudText>
+        </div>
+    }
+    <div class="mt-3">
+        <ImportStatus OnFinished="FinishedAsync" />
+    </div>
+</div>
+
+@code {
+    /// <summary>Raised once, on the UI thread, when new games have just been pulled and analysed.</summary>
+    [Parameter] public EventCallback OnFinished { get; set; }
+
+    private string? _username;
+    private DateTimeOffset? _lastChecked;
+
+    private string LastCheckedText => _lastChecked is { } when
+        ? $"Last checked {ImportText.Ago(when, Clock.UtcNow)}."
+        : "Pulls games you have played on chess.com since your last import, then analyses them.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Coordinator.Changed += OnChanged;
+        _username = (await SetupFlow.GetStatusAsync()).Username;
+        _lastChecked = await Coordinator.GetLastRefreshAsync();
+    }
+
+    private void CheckAsync()
+    {
+        if (_username is { } name) Coordinator.Start(name, firstImport: false);
+    }
+
+    private async Task FinishedAsync()
+    {
+        _lastChecked = await Coordinator.GetLastRefreshAsync();
+        await OnFinished.InvokeAsync();
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Coordinator.Changed -= OnChanged;
+}

@@ -1,0 +1,55 @@
+@using System.Globalization
+@using ChessCoach.Core.Setup
+@implements IDisposable
+@inject ImportCoordinator Coordinator
+
+@if (Coordinator.IsRunning)
+{
+    var progress = Coordinator.Progress;
+    <MudText Typo="Typo.body2" Class="mb-1">@(progress is null ? "Starting…" : ImportText.StageLabel(progress.Stage, progress.Message))</MudText>
+    @if (progress is { Total: > 0 })
+    {
+        <MudProgressLinear Value="@(100.0 * progress.Done / progress.Total)" Color="Color.Primary" Class="mb-2" />
+        <MudText Typo="Typo.caption" Class="mb-3">@progress.Done.ToString("N0", CultureInfo.InvariantCulture) of @progress.Total.ToString("N0", CultureInfo.InvariantCulture)</MudText>
+    }
+    else
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+    }
+    <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="Coordinator.Pause">Pause</MudButton>
+}
+else if (Coordinator.Outcome == ImportOutcome.Finished && Coordinator.Result is not null)
+{
+    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-3">@Coordinator.Result</MudAlert>
+}
+else if (Coordinator.Outcome == ImportOutcome.Paused)
+{
+    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">Paused. Start it again whenever you like: it carries on where it stopped.</MudAlert>
+}
+else if (Coordinator.Outcome == ImportOutcome.Failed)
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">It stopped: @Coordinator.Error</MudAlert>
+}
+
+@code {
+    /// <summary>Raised once, on the UI thread, when a run has just finished successfully.</summary>
+    [Parameter] public EventCallback OnFinished { get; set; }
+
+    private bool _wasRunning;
+
+    protected override void OnInitialized()
+    {
+        _wasRunning = Coordinator.IsRunning;
+        Coordinator.Changed += OnChanged;
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        var finishedNow = _wasRunning && !Coordinator.IsRunning && Coordinator.Outcome == ImportOutcome.Finished;
+        _wasRunning = Coordinator.IsRunning;
+        StateHasChanged();
+        if (finishedNow) await OnFinished.InvokeAsync();
+    });
+
+    public void Dispose() => Coordinator.Changed -= OnChanged;
+}
