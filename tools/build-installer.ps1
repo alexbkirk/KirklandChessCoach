@@ -38,18 +38,36 @@ $lines = @($lines) + 'Lib\site-packages'
 Set-Content -Path $pth.FullName -Value $lines -Encoding ascii
 
 $pyExe = Join-Path $python 'python.exe'
-$getPip = Join-Path $build 'get-pip.py'
-Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile $getPip -UseBasicParsing
-& $pyExe $getPip --no-warn-script-location
-if ($LASTEXITCODE -ne 0) { throw 'Installing pip failed.' }
 
-# 3. The analysis packages, pinned in analysis\requirements.txt. The embedded Python has no build tools,
-#    and some packages install from source, so the build tools go in first.
-& $pyExe -m pip install --no-warn-script-location --disable-pip-version-check setuptools wheel
-if ($LASTEXITCODE -ne 0) { throw 'Installing the build tools failed.' }
+# 3. pip, setuptools (it builds chess from source, and builds wheels itself) and the analysis package. Every file is downloaded from PyPI, checked against its pinned
+#    SHA-256, and installed offline (--no-index), so nothing unverified runs during the build.
+$wheels = Join-Path $build 'packages'
+New-Item -ItemType Directory -Path $wheels | Out-Null
+function Get-Pinned([string]$url, [string]$sha256) {
+    $file = Join-Path $wheels (Split-Path $url -Leaf)
+    Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
+    if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $sha256.ToUpperInvariant()) { throw "$(Split-Path $url -Leaf) did not match its checksum." }
+    return $file
+}
+$pipWheel = Get-Pinned 'https://files.pythonhosted.org/packages/f3/6e/1736e5b4ae2b778ef2f81c47d797de9f891d4d8acb047a24ca37a60294dd/pip-26.2.1-py3-none-any.whl' '71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e'
+$setuptoolsWheel = Get-Pinned 'https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl' '51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670'
+$chessSdist = Get-Pinned 'https://files.pythonhosted.org/packages/93/09/7d04d7581ae3bb8b598017941781bceb7959dd1b13e3ebf7b6a2cd843bc9/chess-1.11.2.tar.gz' 'a8b43e5678fdb3000695bdaa573117ad683761e5ca38e591c4826eba6d25bb39'
+
+# The pinned chess version must be the one analysis\requirements.txt asks for.
 $requirements = Join-Path $root 'analysis\requirements.txt'
-& $pyExe -m pip install --no-warn-script-location --disable-pip-version-check -r $requirements
-if ($LASTEXITCODE -ne 0) { throw 'Installing the analysis packages failed.' }
+if (-not (Select-String -Path $requirements -Pattern '^chess==1\.11\.2$' -Quiet)) { throw 'analysis\requirements.txt no longer asks for chess==1.11.2: update the pinned download here too.' }
+
+# A wheel is a zip: unpacking pip's into site-packages installs it, then pip installs the rest offline.
+$sitePackages = Join-Path $python 'Lib\site-packages'
+$pipZip = [System.IO.Path]::ChangeExtension($pipWheel, '.zip')
+Copy-Item $pipWheel $pipZip
+Expand-Archive -Path $pipZip -DestinationPath $sitePackages
+& $pyExe -m pip --version
+if ($LASTEXITCODE -ne 0) { throw 'Installing pip failed.' }
+& $pyExe -m pip install --no-index --no-warn-script-location --disable-pip-version-check $setuptoolsWheel
+if ($LASTEXITCODE -ne 0) { throw 'Installing the build tools failed.' }
+& $pyExe -m pip install --no-index --no-build-isolation --no-warn-script-location --disable-pip-version-check $chessSdist
+if ($LASTEXITCODE -ne 0) { throw 'Installing the analysis package failed.' }
 
 # 4. The analysis scripts (top level only: no tests, no .venv).
 New-Item -ItemType Directory -Path $analysisOut | Out-Null

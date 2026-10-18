@@ -110,13 +110,22 @@ else
             {
                 <MudAlert Severity="Severity.Error" Class="mb-3">@_importError</MudAlert>
             }
-            @if (!_importBusy && _status.GameCount == 0)
+            @if (!_importBusy && !_status.ImportDone)
             {
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanImport)" OnClick="StartImportAsync">Start the import</MudButton>
+                @if (_status.GameCount > 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        @_status.GameCount.ToString("N0", CultureInfo.InvariantCulture) games downloaded so far,
+                        @_status.UnanalysedGames.ToString("N0", CultureInfo.InvariantCulture) still to analyse.
+                    </MudText>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanImport)" OnClick="StartImportAsync">
+                    @(_status.GameCount > 0 ? "Carry on with the import" : "Start the import")
+                </MudButton>
             }
-            @if (_status.GameCount > 0 && !_importBusy)
+            @if (_status.ImportDone && !_importBusy)
             {
-                <MudAlert Severity="Severity.Success" Dense="true">@_status.GameCount.ToString("N0", CultureInfo.InvariantCulture) games are in ChessCoach.</MudAlert>
+                <MudAlert Severity="Severity.Success" Dense="true">@ImportDoneText</MudAlert>
             }
         </MudPaper>
 
@@ -147,6 +156,10 @@ else
     private string? _importMessage;
     private string? _importError;
     private CancellationTokenSource? _importCancel;
+
+    private string ImportDoneText => _status is { GameCount: > 0 } status
+        ? $"{status.GameCount.ToString("N0", CultureInfo.InvariantCulture)} games are in ChessCoach."
+        : $"No rapid games were found for {_status?.Username} on chess.com. ChessCoach looks at rapid games (10 minutes or longer).";
 
     private bool CanImport => _status is not null && _status.UsernameChosen && _status.MissingEngines.Count == 0;
 
@@ -211,6 +224,7 @@ else
         _importError = null;
         try
         {
+            await SetupFlow.MarkImportStartedAsync();
             var progress = new Progress<ImportProgress>(p =>
             {
                 _importStage = StageLabel(p.Stage, p.Message);
@@ -219,11 +233,12 @@ else
                 InvokeAsync(StateHasChanged);
             });
             await Importer.RunAsync(username, progress, _importCancel.Token);
+            await SetupFlow.MarkImportFinishedAsync();
             _importMessage = "The import finished.";
         }
         catch (OperationCanceledException)
         {
-            _importMessage = "Paused. Press Start the import again any time to carry on.";
+            _importMessage = "Paused. Press Carry on with the import any time to pick up where it stopped.";
         }
         catch (Exception ex)
         {

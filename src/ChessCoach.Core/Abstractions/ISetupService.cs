@@ -9,6 +9,11 @@ public interface ISetupService
 
     /// <summary>Saves the chess.com username. Returns null when saved, or the reason it was refused.</summary>
     Task<string?> SaveUsernameAsync(string? username, CancellationToken cancellationToken = default);
+
+    /// <summary>Records that an import started; it counts as done only after <see cref="MarkImportFinishedAsync"/>.</summary>
+    Task MarkImportStartedAsync(CancellationToken cancellationToken = default);
+
+    Task MarkImportFinishedAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Downloads one engine and checks it (see <see cref="EngineCatalog"/>).</summary>

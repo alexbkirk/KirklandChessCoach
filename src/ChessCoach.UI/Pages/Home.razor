@@ -17,10 +17,20 @@ else if (_summary is null)
 }
 else
 {
-    <div class="page-subtitle">
-        @_summary.GameCount.ToString("N0") rapid games · @_summary.MoveCount.ToString("N0") analysed moves ·
-        games from @_summary.FirstGameDate to @_summary.LastGameDate
-    </div>
+    @if (_summary.GameCount == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            No rapid games yet. ChessCoach looks at rapid games (10 minutes or longer) on chess.com. Once you have played some,
+            import again from the setup page.
+        </MudAlert>
+    }
+    else
+    {
+        <div class="page-subtitle">
+            @_summary.GameCount.ToString("N0") rapid games · @_summary.MoveCount.ToString("N0") analysed moves ·
+            games from @_summary.FirstGameDate to @_summary.LastGameDate
+        </div>
+    }
 
     <MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-6" @bind-ActivePanelIndex="_tab">
         <MudTabPanel Text="Today">

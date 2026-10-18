@@ -93,8 +93,15 @@ public sealed class EngineInstaller(HttpClient http, IOptions<ChessCoachOptions>
             if (component.ZipEntries is not null && !component.ZipEntries.Contains(name, StringComparer.Ordinal)) continue;
 
             var staged = archive + "." + name;
-            entry.ExtractToFile(staged, overwrite: true);
-            File.Move(staged, Path.Combine(engineFolder, name), overwrite: true);
+            try
+            {
+                entry.ExtractToFile(staged, overwrite: true);
+                File.Move(staged, Path.Combine(engineFolder, name), overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(staged)) File.Delete(staged);   // only left when extracting or moving failed
+            }
         }
     }
 }
