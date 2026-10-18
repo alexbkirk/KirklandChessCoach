@@ -98,7 +98,7 @@ public sealed class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(AllThemes))]
-    public void Success_warning_error_and_info_are_readable_as_chip_text_background_and_as_text(string id)
+    public void Success_warning_error_and_info_chips_have_readable_text(string id)
     {
         var c = For(id);
         foreach (var (name, colour, onColour) in c.Semantic)
@@ -109,14 +109,17 @@ public sealed class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(AllThemes))]
-    public void Warning_and_error_colours_can_be_used_as_text_on_the_page(string id)
+    public void Success_warning_error_and_info_colours_can_be_used_as_text_and_as_outlines_on_the_page(string id)
     {
         var c = For(id);
-        foreach (var (name, colour, _) in c.Semantic.Where(s => s.Name is "Warning" or "Error"))
+        foreach (var (name, colour, _) in c.Semantic)
         {
             AtLeast(Text, $"{name} text on the page", colour, c.Background);
             AtLeast(Text, $"{name} text on a card", colour, c.Surface);
         }
+
+        AtLeast(Component, "secondary outline on the page", c.Secondary, c.Background);
+        AtLeast(Component, "secondary outline on a card", c.Secondary, c.Surface);
     }
 
     [Theory]

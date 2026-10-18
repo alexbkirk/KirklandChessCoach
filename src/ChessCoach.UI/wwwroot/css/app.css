@@ -467,5 +467,11 @@ html, body {
 .focus-mode .app-nav,
 .focus-mode .app-user { display: none !important; }
 
-/* MudBlazor draws a default outlined button with a faint border (about 1.3:1); use the palette outline colour, which meets 3:1 on every theme. */
+/* MudBlazor draws an outlined button's border faintly (about 1.3:1 for the default one, and the colour at low opacity for the others); use the palette's own colours, which meet 3:1 on every theme. */
 .mud-button-outlined.mud-button-outlined-default { border-color: var(--mud-palette-lines-inputs); }
+.mud-button-outlined.mud-button-outlined-primary { border-color: var(--mud-palette-primary); }
+.mud-button-outlined.mud-button-outlined-secondary { border-color: var(--mud-palette-secondary); }
+.mud-button-outlined.mud-button-outlined-success { border-color: var(--mud-palette-success); }
+.mud-button-outlined.mud-button-outlined-error { border-color: var(--mud-palette-error); }
+.mud-button-outlined.mud-button-outlined-warning { border-color: var(--mud-palette-warning); }
+.mud-button-outlined.mud-button-outlined-info { border-color: var(--mud-palette-info); }

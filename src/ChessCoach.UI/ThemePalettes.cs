@@ -103,7 +103,7 @@ public static class ThemePalettes
             LinesDefault = "#E2DACB",
             LinesInputs = "#7F7767",
             TableLines = "#E2DACB",
-            Success = "#3F7D4F",
+            Success = "#37704A",
             Warning = "#86590F",
             Error = "#B3402F",
             Info = "#3F6B73",
