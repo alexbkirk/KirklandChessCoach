@@ -46,7 +46,7 @@ jobs:
       - name: Create the analysis environment
         run: |
           python -m venv analysis\.venv
-          analysis\.venv\Scripts\python.exe -m pip install --disable-pip-version-check -r analysisequirements.txt
+          analysis\.venv\Scripts\python.exe -m pip install --disable-pip-version-check -r analysis\requirements.txt
 
       - name: Run the tests
         run: dotnet test ChessCoach.sln -c Release
