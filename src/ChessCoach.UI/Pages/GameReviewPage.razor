@@ -9,7 +9,7 @@
 
 <PageTitle>@(_review is null ? "Game review" : $"vs {_review.Game.Opponent}") · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
+<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="study">Study</a></MudText>
 
 @if (_error is not null)
 {
@@ -22,7 +22,7 @@
 }
 else if (_review is null)
 {
-    <MudAlert Severity="Severity.Warning" Class="mt-3">That game was not found. Open it from the Games tab in Stats.</MudAlert>
+    <MudAlert Severity="Severity.Warning" Class="mt-3">That game was not found. Open it from the Games tab in Study.</MudAlert>
 }
 else
 {

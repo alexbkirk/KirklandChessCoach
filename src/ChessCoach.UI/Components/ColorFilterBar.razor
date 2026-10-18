@@ -1,0 +1,20 @@
+<MudButtonGroup Variant="Variant.Outlined" Class="mb-4">
+    <MudButton OnClick="PickAllAsync" Color="@ColorFor(null)">All</MudButton>
+    <MudButton OnClick="PickWhiteAsync" Color="@ColorFor("white")">White</MudButton>
+    <MudButton OnClick="PickBlackAsync" Color="@ColorFor("black")">Black</MudButton>
+</MudButtonGroup>
+
+@code {
+    /// <summary>The colour the stats are limited to: "white", "black", or null for both.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private Task PickAllAsync() => ValueChanged.InvokeAsync(null);
+
+    private Task PickWhiteAsync() => ValueChanged.InvokeAsync("white");
+
+    private Task PickBlackAsync() => ValueChanged.InvokeAsync("black");
+
+    private Color ColorFor(string? color) => Value == color ? Color.Primary : Color.Default;
+}

@@ -5,11 +5,11 @@
 
 <PageTitle>@(NameQuery ?? "Opponent") · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
+<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="study">Study</a></MudText>
 
 @if (string.IsNullOrWhiteSpace(NameQuery))
 {
-    <MudAlert Severity="Severity.Warning" Class="mt-3">No opponent chosen. Open this page from Stats → Opponents, or click an opponent's name on a puzzle or drill card.</MudAlert>
+    <MudAlert Severity="Severity.Warning" Class="mt-3">No opponent chosen. Open this page from Study → Opponents, or click an opponent's name on a puzzle or drill card.</MudAlert>
 }
 else if (_error is not null)
 {

@@ -497,3 +497,6 @@ analysis/.venv/
 # Installer build output
 build/
 dist/
+
+# Personal working notes (kept on disk, never committed)
+docs/notes/

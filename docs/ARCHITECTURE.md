@@ -225,7 +225,7 @@ These rules are implemented in the current `dashboard_template.html` and the Pyt
    - Board component.
    - Puzzles with spaced repetition saved to `puzzle_progress` and `puzzle_attempts`.
    - The daily drill, weekly focus and opening report.
-3. **Stats tabs.** Overview, Openings, Blunders, Habits and Games at parity with `dashboard.html`.
+3. **Stats and Study tabs.** Stats holds Overview and Openings; Study holds Opponents, Blunders, Games and Habits (parity with `dashboard.html`).
 4. **Refresh and live engine.** A Refresh button with a progress bar and cancel. Puzzle continuations and coaching on demand.
 5. **New features 4–7.** Progress trend, the mate-in-N trainer, last-game review and endgame drills.
 
