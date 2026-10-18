@@ -219,6 +219,7 @@ html, body {
 .drill-card .chess-board {
     max-width: 100%;
     height: auto;
+    max-height: 520px;
     aspect-ratio: 1 / 1;
 }
 

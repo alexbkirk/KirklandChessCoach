@@ -11,12 +11,26 @@ public static class BoardSizes
     public const int Step = 40;
     public const int Default = 520;
 
-    /// <summary>Keeps a size within the allowed range and on a step, so a hand-edited setting cannot make a board unusable.</summary>
-    public static int Clamp(int size) => Math.Clamp((int)Math.Round((double)size / Step) * Step, Min, Max);
+    /// <summary>
+    /// Keeps a size within the allowed range and on a step, so a hand-edited setting cannot make a board unusable. A size halfway
+    /// between two steps goes to the larger one.
+    /// </summary>
+    public static int Clamp(int size) => Clamp((double)size);
 
-    /// <summary>The size to use for the saved text: the default when it is missing or not a whole number.</summary>
+    /// <summary>Safe for any number, however large or small; text that is not a number is not handled here (see <see cref="Parse"/>).</summary>
+    private static int Clamp(double size)
+    {
+        if (double.IsNaN(size)) return Default;
+        var onStep = Math.Round(Math.Clamp(size, Min, Max) / Step, MidpointRounding.AwayFromZero) * Step;
+        return (int)Math.Clamp(onStep, Min, Max);
+    }
+
+    /// <summary>
+    /// The size for the saved text: a whole number (a sign is allowed) is clamped to the range, however large or small; anything
+    /// else, or nothing, means the default.
+    /// </summary>
     public static int Parse(string? saved) =>
-        int.TryParse(saved, NumberStyles.None, CultureInfo.InvariantCulture, out var size) ? Clamp(size) : Default;
+        double.TryParse(saved, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var size) ? Clamp(size) : Default;
 
     /// <summary>One step bigger or smaller, within the range.</summary>
     public static int Next(int size, bool larger) => Clamp(size + (larger ? Step : -Step));
