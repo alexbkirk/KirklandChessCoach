@@ -3,6 +3,8 @@
 @inject ISetupService SetupFlow
 @using ChessCoach.Core.Navigation
 @inject NavigationManager Navigation
+@inject TimeClassView TimeView
+@using ChessCoach.Core.Settings
 @inject AppNavigation AppNav
 
 <PageTitle>Home · ChessCoach</PageTitle>
@@ -22,14 +24,14 @@ else
     @if (_summary.GameCount == 0)
     {
         <MudAlert Severity="Severity.Info" Class="mb-4">
-            No rapid games yet. ChessCoach looks at rapid games (10 minutes or longer) on chess.com. Once you have played some,
-            import again from the setup page.
+            No @GamesLabel yet. ChessCoach always imports rapid games (10 minutes or longer) from chess.com, and blitz and bullet if you turn them on in Settings.
+            Once you have played some, import again from the setup page.
         </MudAlert>
     }
     else
     {
         <div class="page-subtitle">
-            @_summary.GameCount.ToString("N0") rapid games · @_summary.MoveCount.ToString("N0") analysed moves ·
+            @_summary.GameCount.ToString("N0") @GamesLabel · @_summary.MoveCount.ToString("N0") analysed moves ·
             games from @_summary.FirstGameDate to @_summary.LastGameDate
         </div>
     }
@@ -88,6 +90,9 @@ else
 
     private int _tab;
     private int _reload;
+
+    /// <summary>"rapid games", "blitz games" or "games" (for all of them), for the headline numbers.</summary>
+    private string GamesLabel => TimeView.Current is { } timeClass ? $"{timeClass} games" : "games";
 
     protected override void OnParametersSet() => _tab = QueryChoice.Tab(TabParameter, TabCount);
 

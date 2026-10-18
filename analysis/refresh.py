@@ -1,9 +1,9 @@
-"""Refresh the chess data (rapid games only): fetch new games, analyse them, tag and explain blunders, regenerate coach notes.
+"""Refresh the chess data (rapid games, and blitz or bullet when asked): fetch new games, analyse them, tag and explain blunders, regenerate coach notes.
 
-Usage: python -I refresh.py --data-dir <folder> [--user xkirke] [--skip-coach] [--progress jsonl]
+Usage: python -I refresh.py --data-dir <folder> [--user xkirke] [--time-classes rapid,blitz] [--backfill] [--skip-coach] [--progress jsonl]
 Incremental: only months from the latest stored game onward are downloaded, only rapid games not already in
-xkirke_games.db are added (chess.com's rapid = 10 minutes and up), and Stockfish only analyses games that have no
-analysis yet. Every stage is resumable, so cancelling (killing) this process is safe.
+xkirke_games.db are added (chess.com's rapid = 10 minutes and up; --time-classes adds blitz and bullet), and Stockfish only analyses games that have no
+analysis yet. --backfill searches every month instead of only the latest, for when a time class was just added. Every stage is resumable, so cancelling (killing) this process is safe.
 """
 import argparse
 import json
@@ -15,15 +15,18 @@ import urllib.request
 
 H = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, H)
-from common import Context, add_common_args
+from common import Context, add_common_args, parse_time_classes
 from parse_games import parse_pgn_text
 
 ap = argparse.ArgumentParser()
 add_common_args(ap)
 ap.add_argument("--user", default="xkirke")
+ap.add_argument("--time-classes", default="rapid", help="comma-separated: rapid (always), blitz, bullet")
+ap.add_argument("--backfill", action="store_true", help="search every month, not only from the latest stored game")
 ap.add_argument("--skip-coach", action="store_true", help="don't regenerate coach notes")
 a = ap.parse_args()
 ctx = Context(a)
+CLASSES = parse_time_classes(a.time_classes)
 UA = f"chess-coach-refresh ({a.user}; contact: alexbkirk@gmail.com)"
 API = f"https://api.chess.com/pub/player/{a.user}/games"
 
@@ -49,20 +52,20 @@ def run(script, *args):
 db = ctx.connect()
 known = {r[0] for r in db.execute("select id from games")}
 last = db.execute("select max(date) from games").fetchone()[0] or "0000-00"
-start = last[:7]   # re-fetch the month of the latest game: it may have gained games since
-ctx.progress("fetch", 0, None, f"Latest stored game: {last}. Checking chess.com from {start}.")
+start = "0000-00" if a.backfill else last[:7]   # re-fetch the month of the latest game: it may have gained games since
+ctx.progress("fetch", 0, None, f"Latest stored game: {last}. Checking chess.com from {start if not a.backfill else 'the first month'} for {', '.join(CLASSES)}.")
 archives = json.loads(get(f"{API}/archives"))["archives"]
 months = [u for u in archives if "/".join(u.rsplit("/", 2)[-2:]).replace("/", "-") >= start]
 
 new = []
 for i, u in enumerate(months, 1):
     for g in parse_pgn_text(get(u + "/pgn"), a.user):
-        if g["timeClass"] == "rapid" and g["id"] not in known:
+        if g["timeClass"] in CLASSES and g["id"] not in known:
             known.add(g["id"])
             new.append(g)
     ctx.progress("fetch", i, len(months), f"Downloaded month {i} of {len(months)}")
     time.sleep(0.3)
-ctx.progress("fetch", len(months), len(months), f"{len(new)} new rapid game(s).")
+ctx.progress("fetch", len(months), len(months), f"{len(new)} new game(s).")
 
 if new:
     cols = [r[1] for r in db.execute("pragma table_info(games)")]

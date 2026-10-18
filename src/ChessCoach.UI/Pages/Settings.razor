@@ -7,6 +7,7 @@
 @implements IDisposable
 @inject UpdateService Updates
 @inject BoardView View
+@inject TimeClassView TimeView
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
@@ -31,6 +32,20 @@
                 <div class="eyebrow" style="text-transform:none; letter-spacing:0">@option.Description</div>
             </button>
         }
+    </div>
+</MudPaper>
+
+<MudPaper Class="pa-6 mb-6" Style="max-width:640px">
+    <MudText Typo="Typo.h6">Games to include</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3">
+        ChessCoach always imports your rapid games (10 minutes or longer). You can also include blitz and bullet. After you turn one on,
+        press <b>Check for new games</b> on the Home page: the first time it searches all your past games, which can take a while.
+        Once you have more than one, the header lets you switch between them.
+    </MudText>
+    <div class="d-flex flex-column">
+        <MudCheckBox T="bool" Value="true" Disabled="true" Label="Rapid (always included)" Dense="true" />
+        <MudCheckBox T="bool" Value="TimeView.Imported.Contains(TimeClasses.Blitz)" ValueChanged="ToggleBlitzAsync" Label="Blitz (3 to under 10 minutes)" Dense="true" />
+        <MudCheckBox T="bool" Value="TimeView.Imported.Contains(TimeClasses.Bullet)" ValueChanged="ToggleBulletAsync" Label="Bullet (under 3 minutes)" Dense="true" />
     </div>
 </MudPaper>
 
@@ -132,6 +147,13 @@ else
         _key = await KeySettings.LoadAsync();
         await RunAsync();
     }
+
+    private Task ToggleBlitzAsync(bool on) => SetImportedAsync(TimeClasses.Blitz, on);
+
+    private Task ToggleBulletAsync(bool on) => SetImportedAsync(TimeClasses.Bullet, on);
+
+    private Task SetImportedAsync(string timeClass, bool on) =>
+        TimeView.SetImportedAsync(on ? [.. TimeView.Imported, timeClass] : TimeView.Imported.Where(c => c != timeClass));
 
     private void OnUpdatesChanged() => _ = InvokeAsync(StateHasChanged);
 

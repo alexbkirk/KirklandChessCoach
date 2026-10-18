@@ -1,11 +1,12 @@
 using System.Globalization;
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
+using ChessCoach.Core.Settings;
 using Dapper;
 
 namespace ChessCoach.Infrastructure.Data;
 
-public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuzzleRepository
+public sealed class PuzzleRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IPuzzleRepository
 {
     public async Task<IReadOnlyList<Puzzle>> LoadPoolAsync(CancellationToken cancellationToken = default)
     {
@@ -19,8 +20,10 @@ public sealed class PuzzleRepository(SqliteConnectionFactory connections) : IPuz
             FROM coach_notes n
             JOIN moves m ON m.game_id = n.game_id AND m.ply = n.ply
             JOIN games g ON g.id = n.game_id
+            WHERE (@tc IS NULL OR g.timeClass = @tc)
             ORDER BY json_extract(n.note, '$.swing') DESC, m.cp_loss DESC, CAST(g.date AS TEXT) DESC, g.time DESC
             """,
+            new { tc = timeClass?.Current },
             cancellationToken: cancellationToken));
         return rows.Select(ToPuzzle).ToList();
     }

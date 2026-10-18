@@ -13,6 +13,15 @@ import sys
 BUSY_TIMEOUT_MS = 5000
 
 
+TIME_CLASSES = ("rapid", "blitz", "bullet")
+
+
+def parse_time_classes(text):
+    """The time classes to import from a comma-separated list: only known ones, once each, and always rapid."""
+    wanted = {part.strip().lower() for part in (text or "").split(",")} | {"rapid"}
+    return [c for c in TIME_CLASSES if c in wanted]
+
+
 def add_common_args(parser):
     default = os.environ.get("CHESSCOACH_DATA_DIR")
     parser.add_argument("--data-dir", default=default, required=default is None,

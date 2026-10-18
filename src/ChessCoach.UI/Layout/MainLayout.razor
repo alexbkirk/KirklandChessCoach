@@ -3,6 +3,8 @@
 @inject ThemeState Theme
 @inject AppNavigation AppNav
 @inject BoardView View
+@inject TimeClassView TimeView
+@inject ISetupService SetupFlow
 @using ChessCoach.Core.Settings
 @using Microsoft.AspNetCore.Components.Web
 
@@ -37,11 +39,29 @@
                     <button type="button" class="tool-button" aria-pressed="@(View.FocusMode ? "true" : "false")" @onclick="View.ToggleFocus" title="@(View.FocusMode ? "Leave focus mode (Esc)" : "Focus mode: a bigger board and less text")">Focus</button>
                 </div>
             }
-            <div class="app-user">xkirke · rapid</div>
+            <div class="app-user">
+                <span>@_username</span>
+                <span aria-hidden="true">·</span>
+                @if (TimeView.Imported.Count > 1)
+                {
+                    <label class="visually-hidden" for="time-class">Time control shown</label>
+                    <select id="time-class" class="time-select" @onchange="OnTimeClassChanged">
+                        @foreach (var timeClass in TimeView.Imported)
+                        {
+                            <option value="@timeClass" selected="@(TimeView.Selection == timeClass)">@TimeClasses.Label(timeClass)</option>
+                        }
+                        <option value="@TimeClasses.All" selected="@(TimeView.Selection == TimeClasses.All)">@TimeClasses.Label(TimeClasses.All)</option>
+                    </select>
+                }
+                else
+                {
+                    <span>@TimeClasses.Label(TimeView.Selection).ToLowerInvariant()</span>
+                }
+            </div>
         </div>
     </header>
     <UpdateBanner />
-    <main class="app-main">
+    <main class="app-main" @key="TimeView.Selection">
         @if (Theme.Loaded)
         {
             @Body
@@ -51,6 +71,7 @@
 
 @code {
     private MudTheme _theme = ThemePalettes.For(Themes.Default.Id);
+    private string _username = "";
     private string _themeId = Themes.Default.Id;
 
     protected override async Task OnInitializedAsync()
@@ -58,7 +79,17 @@
         Theme.Changed += OnThemeChanged;
         AppNav.Changed += OnNavigationChanged;
         View.Changed += OnNavigationChanged;
+        TimeView.Changed += OnNavigationChanged;
         await View.LoadAsync();
+        await TimeView.LoadAsync();
+        try
+        {
+            _username = (await SetupFlow.GetStatusAsync()).Username ?? "";
+        }
+        catch (Exception)
+        {
+            // the name is only a label
+        }
         await Theme.LoadAsync();
         Apply();
     }
@@ -81,6 +112,8 @@
     /// <summary>In focus mode the board fills the window's height, leaving room for the header, title and the controls under it; otherwise it is the size the player chose.</summary>
     private string BoardWidth => View.FocusMode ? "clamp(320px, calc(100vh - 250px), 900px)" : $"{View.Size}px";
 
+    private Task OnTimeClassChanged(ChangeEventArgs e) => TimeView.SelectAsync(e.Value?.ToString() ?? TimeClasses.Rapid);
+
     private void OnKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Escape") View.ExitFocus();
@@ -91,5 +124,6 @@
         Theme.Changed -= OnThemeChanged;
         AppNav.Changed -= OnNavigationChanged;
         View.Changed -= OnNavigationChanged;
+        TimeView.Changed -= OnNavigationChanged;
     }
 }

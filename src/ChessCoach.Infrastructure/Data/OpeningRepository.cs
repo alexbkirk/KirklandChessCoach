@@ -1,11 +1,12 @@
 using System.Globalization;
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
+using ChessCoach.Core.Settings;
 using Dapper;
 
 namespace ChessCoach.Infrastructure.Data;
 
-public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOpeningRepository
+public sealed class OpeningRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IOpeningRepository
 {
     /// <summary>
     /// Evaluations are stored from White's side; the report uses your side, clamped to +/-1000 centipawns.
@@ -37,7 +38,9 @@ public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOp
                      WHERE m.game_id = g.id AND m.ply = CASE WHEN g.color = 'white' THEN 19 ELSE 20 END AND m.is_mine = 1) AS EvalAt10White
             FROM games g
             LEFT JOIN per_game p ON p.game_id = g.id
+            WHERE (@tc IS NULL OR g.timeClass = @tc)
             """,
+            new { tc = timeClass?.Current },
             cancellationToken: cancellationToken));
 
         return rows.Select(r => new OpeningGame(
@@ -53,8 +56,8 @@ public sealed class OpeningRepository(SqliteConnectionFactory connections) : IOp
 
     public async Task<(IReadOnlyList<VariationGame> Games, IReadOnlyList<VariationPly> Plies)> LoadVariationAsync(OpeningScope scope, CancellationToken cancellationToken = default)
     {
-        const string Where = "g.color = @Color AND (@Opening IS NULL OR g.opening = @Opening) AND (@Family IS NULL OR g.family = @Family)";
-        var args = new { scope.Color, scope.Opening, scope.Family };
+        const string Where = "g.color = @Color AND (@Opening IS NULL OR g.opening = @Opening) AND (@Family IS NULL OR g.family = @Family) AND (@tc IS NULL OR g.timeClass = @tc)";
+        var args = new { scope.Color, scope.Opening, scope.Family, tc = timeClass?.Current };
         await using var connection = await connections.OpenAsync(cancellationToken);
         var games = await connection.QueryAsync<GameRow>(new CommandDefinition(
             $"""

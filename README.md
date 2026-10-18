@@ -19,6 +19,10 @@ To bring in games you have played since, press **Check for new games** at the to
 
 Your games and settings are kept in `%LOCALAPPDATA%\ChessCoach`. Uninstalling the app does not delete them.
 
+### Blitz and bullet
+
+ChessCoach imports your rapid games. To include blitz or bullet as well, turn them on in **Settings > Games to include**, then press **Check for new games** on the Home page: the first time it searches all your past games, which can take a while. Once you have more than one time control, the name at the top right of the window becomes a menu to switch between them (or see all games), and every page follows it.
+
 ### Updating
 
 ChessCoach looks for a newer release when it opens. When one exists, a bar at the top of the window says so: press **Update**. The app downloads the installer (only from GitHub), checks it against the release's SHA-256, opens the installer and closes itself. Your games and settings are kept. **Settings > About and updates** shows your version and has a **Check for updates** button.

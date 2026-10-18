@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using ChessCoach.Core.Abstractions;
+using ChessCoach.Core.Settings;
 using Microsoft.Extensions.Options;
 
 namespace ChessCoach.Infrastructure.Setup;
@@ -10,7 +11,7 @@ namespace ChessCoach.Infrastructure.Setup;
 /// The script writes one JSON object per progress line; anything else is kept only to explain a failure.
 /// Cancelling stops the whole process tree. The script is resumable, so the next run carries on.
 /// </summary>
-public sealed class ImportRunner(IOptions<ChessCoachOptions> options) : IImportRunner
+public sealed class ImportRunner(IOptions<ChessCoachOptions> options, TimeClassSettings? timeClasses = null) : IImportRunner
 {
     private const int KeptLines = 20;
 
@@ -36,6 +37,12 @@ public sealed class ImportRunner(IOptions<ChessCoachOptions> options) : IImportR
         start.ArgumentList.Add(username);
         start.ArgumentList.Add("--progress");
         start.ArgumentList.Add("jsonl");
+
+        // rapid always; blitz and bullet when the player turned them on. A class turned on since the last import needs every month searched.
+        var plan = timeClasses is null ? new ImportPlan([TimeClasses.Rapid], Backfill: false) : await timeClasses.GetImportPlanAsync(cancellationToken);
+        start.ArgumentList.Add("--time-classes");
+        start.ArgumentList.Add(string.Join(',', plan.Classes));
+        if (plan.Backfill) start.ArgumentList.Add("--backfill");
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException("The analysis could not be started.");
         await using var stop = cancellationToken.Register(() => TryKill(process));
@@ -65,6 +72,9 @@ public sealed class ImportRunner(IOptions<ChessCoachOptions> options) : IImportR
             var tail = errors.Length > 0 ? errors : string.Join(Environment.NewLine, kept);
             throw new InvalidOperationException($"The import stopped with an error (exit code {process.ExitCode}).\n{tail}");
         }
+
+        // the search of every month finished, so the next import can go back to looking only from the latest game
+        if (plan.Backfill && timeClasses is not null) await timeClasses.ClearBackfillAsync(CancellationToken.None);
     }
 
     /// <summary>One progress line as an update, or null when the line is not a progress object.</summary>
