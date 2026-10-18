@@ -1,3 +1,4 @@
+@using ChessCoach.Core.Training
 @inject DrillService Drill
 @inject ChessRules Rules
 
@@ -16,11 +17,22 @@
     }
     else
     {
-        <MudText Typo="Typo.body2" Class="mb-2">@((MarkupString)Prompt)</MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">@((MarkupString)(_retry is null ? Prompt : RetryPrompt))</MudText>
         <ChessBoard Fen="@BoardFen" Orientation="@Slot.Position.Color" LastMove="@(Slot.Format == DrillFormat.Hang ? Slot.Position.Uci : null)"
-                    Marks="@Marks" Selectable="@(!Slot.Done && Slot.Format != DrillFormat.Safe)" OnSquareClick="Toggle" />
+                    Marks="@Marks" Selectable="@(Playing && Slot.Format != DrillFormat.Safe)" OnSquareClick="Toggle" />
 
-        @if (!Slot.Done)
+        @if (_retry is { } retry)
+        {
+            <div class="strikes mt-2">
+                @for (var i = 0; i < retry.Tracker.MaxStrikes; i++)
+                {
+                    <span class="strike-dot @(i < retry.Tracker.Strikes ? "used" : "")"></span>
+                }
+            </div>
+            <MudAlert Severity="@RetrySeverity(retry)" Dense="true" Class="mt-2">@RetryText(retry)</MudAlert>
+        }
+
+        @if (Playing)
         {
             <div class="d-flex gap-2 mt-2">
                 @if (Slot.Format == DrillFormat.Safe)
@@ -34,6 +46,10 @@
                     <MudButton Variant="Variant.Outlined" OnClick="() => SubmitAsync([])">@(Slot.Format == DrillFormat.Hang ? "Nothing hangs" : "None")</MudButton>
                 }
             </div>
+        }
+        else if (_retry is not null)
+        {
+            <MudButton Class="mt-2" Variant="Variant.Filled" Color="Color.Primary" OnClick="ContinueAsync">@(Slot.Done ? "Show the result" : "Continue to the next round")</MudButton>
         }
         else
         {
@@ -72,6 +88,25 @@
     private DrillAnswers? _answers;
     private string? _answersFor;
     private readonly HashSet<string> _selected = [];
+    private Retry? _retry;
+
+    /// <summary>
+    /// A wrong first try is already scored, exactly as before. The player may try the same squares again, with more help after
+    /// each wrong try, before the answer is shown. Retries are practice: they never change the day's score.
+    /// </summary>
+    private sealed class Retry(StrikeTracker tracker, IReadOnlyList<string> expected, int round, DrillAnswer last)
+    {
+        public StrikeTracker Tracker { get; } = tracker;
+
+        public IReadOnlyList<string> Expected { get; } = expected;
+
+        public int Round { get; } = round;
+
+        public DrillAnswer Last { get; set; } = last;
+    }
+
+    /// <summary>Squares can be marked and submitted now: the slot is open, or a retry is under way.</summary>
+    private bool Playing => _retry is null ? !Slot.Done : !_retry.Tracker.IsFinished;
 
     private string Side => Slot.Position.Color == "white" ? "White" : "Black";
 
@@ -123,6 +158,8 @@
                 return [new BoardMark(Slot.Position.Uci[..2], "yellow", Slot.Position.Uci[2..4])];
             }
 
+            if (_retry is { } retry) return RetryMarks(retry);
+
             var last = Slot.Answers.LastOrDefault();
             if (Slot.Done && last is not null)
             {
@@ -154,12 +191,82 @@
     private async Task SubmitAsync(IReadOnlyCollection<string> selected)
     {
         if (_answers is null) return;
-        var expected = Slot.Format == DrillFormat.Hang
+        var expected = _retry?.Expected ?? (Slot.Format == DrillFormat.Hang
             ? _answers.Hanging
-            : Slot.Round switch { 0 => _answers.Checks, 1 => _answers.Captures, _ => _answers.Threats };
-        await Drill.SubmitSquaresAsync(Day, Slot, selected, expected);
+            : Slot.Round switch { 0 => _answers.Checks, 1 => _answers.Captures, _ => _answers.Threats });
+        if (_retry is { } open)
+        {
+            RetryAsync(open, selected);
+            return;
+        }
+
+        var round = Slot.Format == DrillFormat.Hang ? 0 : Slot.Round;
+        var answer = await Drill.SubmitSquaresAsync(Day, Slot, selected, expected);
+        _selected.Clear();
+        if (!answer.Ok)
+        {
+            var tracker = new StrikeTracker();
+            tracker.Register(correct: false);
+            _retry = new Retry(tracker, expected.ToList(), round, answer);
+        }
+
+        await OnChanged.InvokeAsync();
+    }
+
+    /// <summary>A further try at the same squares: graded here, never saved.</summary>
+    private void RetryAsync(Retry retry, IReadOnlyCollection<string> selected)
+    {
+        retry.Last = DrillGrader.Grade(selected, retry.Expected);
+        retry.Tracker.Register(retry.Last.Ok);
+        _selected.Clear();
+    }
+
+    private async Task ContinueAsync()
+    {
+        _retry = null;
         _selected.Clear();
         await OnChanged.InvokeAsync();
+    }
+
+    private string RetryPrompt => Slot.Format == DrillFormat.Hang
+        ? "Look again: which of your pieces can be taken for free, or lost to a cheaper piece? Click them, then Submit."
+        : $"<b>Look again at round {_retry!.Round + 1} of 3 · {DrillGrader.CctRounds[_retry.Round]}.</b> Click every square that fits, then Submit.";
+
+    private Severity RetrySeverity(Retry retry) => retry.Tracker.State switch
+    {
+        StrikeState.Solved => Severity.Success,
+        StrikeState.Failed => Severity.Error,
+        _ => Severity.Warning,
+    };
+
+    private string RetryText(Retry retry)
+    {
+        var tracker = retry.Tracker;
+        if (tracker.State == StrikeState.Solved)
+        {
+            return $"Found it, after {tracker.Strikes} wrong {(tracker.Strikes == 1 ? "try" : "tries")}. It still counts as missed today: the first try decides the score.";
+        }
+
+        return DrillGrader.Feedback(retry.Last, tracker.Hint, tracker.TriesLeft).Text;
+    }
+
+    private IReadOnlyList<BoardMark> RetryMarks(Retry retry)
+    {
+        var tracker = retry.Tracker;
+        if (tracker.State == StrikeState.Failed)
+        {
+            // the full answer: every expected square, plus the squares marked wrongly in the last try
+            var wrong = retry.Last.Extra;
+            return [.. retry.Expected.Select(s => new BoardMark(s, retry.Last.Right.Contains(s) ? "green" : "yellow")), .. wrong.Select(s => new BoardMark(s, "red"))];
+        }
+
+        if (tracker.State == StrikeState.Solved)
+        {
+            return retry.Expected.Select(s => new BoardMark(s, "green")).ToList();
+        }
+
+        var feedback = DrillGrader.Feedback(retry.Last, tracker.Hint, tracker.TriesLeft);
+        return [.. feedback.WrongSquares.Select(s => new BoardMark(s, "red")), .. _selected.Where(s => !feedback.WrongSquares.Contains(s)).Select(s => new BoardMark(s, "blue"))];
     }
 
     private async Task JudgeAsync(bool choseSafe)
