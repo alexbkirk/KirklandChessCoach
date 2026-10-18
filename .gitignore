@@ -493,3 +493,7 @@ analysis/.venv/
 *.db-wal
 *.db-shm
 
+
+# Installer build output
+build/
+dist/

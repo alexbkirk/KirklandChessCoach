@@ -1,0 +1,272 @@
+@page "/setup"
+@using ChessCoach.Core.Setup
+@using ChessCoach.Core.Abstractions
+@using System.Globalization
+@inject ISetupService SetupFlow
+@inject IEngineInstaller Engines
+@inject IImportRunner Importer
+@inject NavigationManager Navigation
+
+<PageTitle>Set up · ChessCoach</PageTitle>
+
+<MudText Typo="Typo.h4" Class="page-title">Let's set up ChessCoach</MudText>
+<div class="page-subtitle">Three short steps. You only do this once.</div>
+
+@if (_status is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <div class="section-gap">
+        <MudPaper Class="pa-6">
+            <div class="eyebrow mb-2">Step 1 of 3</div>
+            <MudText Typo="Typo.h6" Class="mb-1">Your chess.com username</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">ChessCoach reads your games from chess.com using this name.</MudText>
+            @if (_status.UsernameChosen)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">Using <b>@_status.Username</b>. <a href="#" @onclick="ChangeUsername" @onclick:preventDefault="true">Change</a></MudAlert>
+            }
+            else
+            {
+                <div class="d-flex gap-3 align-start flex-wrap">
+                    <MudTextField T="string" @bind-Value="_username" Label="Username" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Style="max-width:320px" HelperText="Letters, numbers, _ or -" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveUsernameAsync" Class="mt-1">Save</MudButton>
+                </div>
+                @if (_usernameError is not null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Error" Class="mt-2">@_usernameError</MudText>
+                }
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-6">
+            <div class="eyebrow mb-2">Step 2 of 3</div>
+            <MudText Typo="Typo.h6" Class="mb-1">Download the chess engines</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">
+                The engines score your moves and play the human-like opponent. They are about 100 MB in total and are checked against
+                a fixed fingerprint after download.
+            </MudText>
+            <MudSimpleTable Dense="true" Class="mb-4">
+                <tbody>
+                    @foreach (var engine in EngineCatalog.All)
+                    {
+                        var missing = _status.MissingEngines.Any(m => m.Name == engine.Name);
+                        <tr>
+                            <td>@engine.Name</td>
+                            <td>@engine.Description</td>
+                            <td class="text-right">@Megabytes(engine.Size)</td>
+                            <td>
+                                <MudChip T="string" Size="Size.Small" Color="@(missing ? Color.Default : Color.Success)">@(missing ? "to download" : "ready")</MudChip>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            @if (_engineBusy)
+            {
+                <MudText Typo="Typo.body2" Class="mb-1">@_engineStage</MudText>
+                <MudProgressLinear Value="_engineProgress" Color="Color.Primary" Class="mb-3" />
+            }
+            @if (_engineError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_engineError</MudAlert>
+            }
+            @if (_status.MissingEngines.Count > 0)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_status.UsernameChosen || _engineBusy)" OnClick="DownloadEnginesAsync">
+                    Download the engines
+                </MudButton>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-6">
+            <div class="eyebrow mb-2">Step 3 of 3</div>
+            <MudText Typo="Typo.h6" Class="mb-1">Import your games</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">
+                This downloads every rapid game you have played on chess.com and analyses it. A few thousand games can take several hours.
+                You can close ChessCoach at any time: the next import carries on where this one stopped.
+            </MudText>
+            @if (_importBusy)
+            {
+                <MudText Typo="Typo.body2" Class="mb-1">@_importStage</MudText>
+                @if (_importTotal > 0)
+                {
+                    <MudProgressLinear Value="@(100.0 * _importDone / _importTotal)" Color="Color.Primary" Class="mb-2" />
+                    <MudText Typo="Typo.caption" Class="mb-3">@_importDone.ToString("N0", CultureInfo.InvariantCulture) of @_importTotal.ToString("N0", CultureInfo.InvariantCulture)</MudText>
+                }
+                else
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+                }
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="CancelImport">Pause</MudButton>
+            }
+            else if (_importMessage is not null)
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">@_importMessage</MudAlert>
+            }
+            @if (_importError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_importError</MudAlert>
+            }
+            @if (!_importBusy && !_status.ImportDone)
+            {
+                @if (_status.GameCount > 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        @_status.GameCount.ToString("N0", CultureInfo.InvariantCulture) games downloaded so far,
+                        @_status.UnanalysedGames.ToString("N0", CultureInfo.InvariantCulture) still to analyse.
+                    </MudText>
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanImport)" OnClick="StartImportAsync">
+                    @(_status.GameCount > 0 ? "Carry on with the import" : "Start the import")
+                </MudButton>
+            }
+            @if (_status.ImportDone && !_importBusy)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">@ImportDoneText</MudAlert>
+            }
+        </MudPaper>
+
+        @if (_status.Complete)
+        {
+            <MudPaper Class="pa-6">
+                <MudText Typo="Typo.h6" Class="mb-2">You're all set</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoHome">Open ChessCoach</MudButton>
+            </MudPaper>
+        }
+    </div>
+}
+
+@code {
+    private SetupStatus? _status;
+    private string? _username;
+    private string? _usernameError;
+
+    private bool _engineBusy;
+    private string _engineStage = "";
+    private double _engineProgress;
+    private string? _engineError;
+
+    private bool _importBusy;
+    private string _importStage = "";
+    private int _importDone;
+    private int _importTotal;
+    private string? _importMessage;
+    private string? _importError;
+    private CancellationTokenSource? _importCancel;
+
+    private string ImportDoneText => _status is { GameCount: > 0 } status
+        ? $"{status.GameCount.ToString("N0", CultureInfo.InvariantCulture)} games are in ChessCoach."
+        : $"No rapid games were found for {_status?.Username} on chess.com. ChessCoach looks at rapid games (10 minutes or longer).";
+
+    private bool CanImport => _status is not null && _status.UsernameChosen && _status.MissingEngines.Count == 0;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _status = await SetupFlow.GetStatusAsync();
+    }
+
+    private async Task SaveUsernameAsync()
+    {
+        _usernameError = await SetupFlow.SaveUsernameAsync(_username);
+        if (_usernameError is null)
+        {
+            await RefreshAsync();
+        }
+    }
+
+    private async Task ChangeUsername()
+    {
+        _username = _status?.Username;
+        _status = _status! with { Username = null };
+        await Task.CompletedTask;
+    }
+
+    private async Task DownloadEnginesAsync()
+    {
+        if (_status is null) return;
+        _engineBusy = true;
+        _engineError = null;
+        try
+        {
+            foreach (var engine in _status.MissingEngines.ToList())
+            {
+                var progress = new Progress<EngineProgress>(p =>
+                {
+                    _engineStage = $"{p.Engine}: {(p.Stage == "Checked" ? "checking the download" : "downloading")}";
+                    _engineProgress = p.Total > 0 ? 100.0 * p.Done / p.Total : 0;
+                    InvokeAsync(StateHasChanged);
+                });
+                await Engines.InstallAsync(engine, progress);
+            }
+        }
+        catch (Exception ex)
+        {
+            _engineError = $"The download did not finish: {ex.Message} You can press the button again to retry.";
+        }
+        finally
+        {
+            _engineBusy = false;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task StartImportAsync()
+    {
+        if (_status?.Username is not { } username) return;
+        _importCancel = new CancellationTokenSource();
+        _importBusy = true;
+        _importMessage = null;
+        _importError = null;
+        try
+        {
+            await SetupFlow.MarkImportStartedAsync();
+            var progress = new Progress<ImportProgress>(p =>
+            {
+                _importStage = StageLabel(p.Stage, p.Message);
+                _importDone = p.Done;
+                _importTotal = p.Total;
+                InvokeAsync(StateHasChanged);
+            });
+            await Importer.RunAsync(username, progress, _importCancel.Token);
+            await SetupFlow.MarkImportFinishedAsync();
+            _importMessage = "The import finished.";
+        }
+        catch (OperationCanceledException)
+        {
+            _importMessage = "Paused. Press Carry on with the import any time to pick up where it stopped.";
+        }
+        catch (Exception ex)
+        {
+            _importError = $"The import stopped: {ex.Message}";
+        }
+        finally
+        {
+            _importBusy = false;
+            _importCancel.Dispose();
+            _importCancel = null;
+            await RefreshAsync();
+        }
+    }
+
+    private void CancelImport() => _importCancel?.Cancel();
+
+    private void GoHome() => Navigation.NavigateTo("");
+
+    private static string StageLabel(string stage, string message) => stage switch
+    {
+        "fetch" => "Downloading your games from chess.com",
+        "analyze" => "Analysing your games with Stockfish",
+        "tag" => "Finding your blunders",
+        "explain" => "Explaining the blunders",
+        "coach" => "Writing coach notes",
+        "done" => "Finished",
+        _ => message,
+    };
+
+    private static string Megabytes(long bytes) => (bytes / 1_000_000.0).ToString("0.0", CultureInfo.InvariantCulture) + " MB";
+}
