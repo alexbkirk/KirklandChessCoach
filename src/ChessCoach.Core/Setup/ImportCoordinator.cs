@@ -76,7 +76,26 @@ public sealed class ImportCoordinator(IImportRunner runner, ISetupService setup,
         }
     }
 
-    public void Dispose() => _cancel?.Dispose();
+    /// <summary>
+    /// Called when the app closes: stops a running import and waits briefly for it to end, so its Python process
+    /// is not left running (and writing to the database) after the window is gone. The import is resumable.
+    /// </summary>
+    public void Dispose()
+    {
+        Pause();
+        try
+        {
+            Completion.Wait(ShutdownWait);
+        }
+        catch (AggregateException)
+        {
+            // the run already recorded its failure
+        }
+
+        _cancel?.Dispose();
+    }
+
+    private static readonly TimeSpan ShutdownWait = TimeSpan.FromSeconds(10);
 
     /// <summary>When the last import finished, or null if none has since this data folder was set up.</summary>
     public async Task<DateTimeOffset?> GetLastRefreshAsync(CancellationToken cancellationToken = default)

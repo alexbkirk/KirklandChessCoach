@@ -89,7 +89,7 @@ else
                 This downloads every rapid game you have played on chess.com and analyses it. A few thousand games can take several hours.
                 You can close ChessCoach at any time: the next import carries on where this one stopped.
             </MudText>
-            <ImportStatus OnFinished="RefreshAsync" />
+            <ImportStatus />
             @if (!Coordinator.IsRunning && !_status.ImportDone)
             {
                 @if (_status.GameCount > 0)
@@ -137,11 +137,21 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _importWasRunning = Coordinator.IsRunning;
         Coordinator.Changed += OnCoordinatorChanged;
         await RefreshAsync();
     }
 
-    private void OnCoordinatorChanged() => _ = InvokeAsync(StateHasChanged);
+    private bool _importWasRunning;
+
+    /// <summary>When a run ends, however it ends, reload the status so the counts and the button are right.</summary>
+    private void OnCoordinatorChanged() => _ = InvokeAsync(async () =>
+    {
+        var ended = _importWasRunning && !Coordinator.IsRunning;
+        _importWasRunning = Coordinator.IsRunning;
+        if (ended) await RefreshAsync();
+        StateHasChanged();
+    });
 
     public void Dispose() => Coordinator.Changed -= OnCoordinatorChanged;
 

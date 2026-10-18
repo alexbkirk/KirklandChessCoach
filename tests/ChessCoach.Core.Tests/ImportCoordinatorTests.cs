@@ -124,6 +124,33 @@ public sealed class ImportCoordinatorTests
     }
 
     [Fact]
+    public async Task Closing_the_app_stops_a_running_import_and_waits_for_it_to_end()
+    {
+        var (coordinator, runner, _, settings) = Make();
+        runner.Block = true;
+        coordinator.Start("xkirke", firstImport: false);
+        Assert.True(coordinator.IsRunning);
+
+        coordinator.Dispose();
+
+        Assert.True(coordinator.Completion.IsCompleted);
+        Assert.False(coordinator.IsRunning);
+        Assert.Equal(ImportOutcome.Paused, coordinator.Outcome);
+        Assert.Empty(settings.Values);   // stopped, so not recorded as a refresh
+        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public void Closing_the_app_with_nothing_running_is_harmless()
+    {
+        var (coordinator, _, _, _) = Make();
+
+        coordinator.Dispose();
+
+        Assert.False(coordinator.IsRunning);
+    }
+
+    [Fact]
     public async Task A_failure_is_kept_as_the_error_and_does_not_count_as_a_refresh()
     {
         var (coordinator, runner, setup, settings) = Make();
