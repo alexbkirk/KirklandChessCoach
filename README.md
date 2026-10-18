@@ -1,6 +1,6 @@
 # ChessCoach
 
-A Windows desktop chess coach built on your own chess.com games. It shows your stats, openings and opponents, finds the blunders you keep repeating, and trains you on them with puzzles and a daily drill.
+A Windows desktop chess coach built on your own chess.com games. It shows your results, openings, opponents, blunders and habits, finds the blunders you keep repeating (the weekly focus), and trains you on them with puzzles, opening practice and a daily drill. Practice gives you three tries, with more help after each wrong one.
 
 It is a Blazor Hybrid app (WPF host, .NET 10, MudBlazor UI) with SQLite for storage. The analysis runs in Python, using Stockfish and Maia through lc0. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design.
 
@@ -64,10 +64,14 @@ analysis\.venv\Scripts\python -m unittest discover -s analysis\tests
 | `src/ChessCoach.Core` | Domain types and pure logic, no I/O |
 | `src/ChessCoach.Infrastructure` | SQLite (Dapper), migrations, diagnostics |
 | `analysis/` | Python scripts for fetching, analysing and tagging games |
+| `installer/` | Inno Setup script for `ChessCoach-Setup.exe` |
+| `tools/` | Build scripts: the installer and the app icon |
+| `scripts/` | Development setup (`setup.ps1`) |
+| `docs/` | Architecture, coaching and vision notes |
 | `tests/` | xUnit tests |
 
 ## Licences
 
-- The app code is MIT-free for now; no licence has been chosen yet.
+- No licence has been chosen for the app code yet.
 - `src/ChessCoach.UI/wwwroot/lib/chessground` is **GPL-3.0-or-later** (chessground). Distributing the app means it must be GPL-3.0-or-later too.
 - `src/ChessCoach.UI/wwwroot/lib/chessjs` is BSD-2-Clause (chess.js).
