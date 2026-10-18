@@ -70,6 +70,7 @@ public partial class App : Application
             .CreateLogger();
         builder.Services.AddSerilog();
 
+        builder.Services.AddSingleton<ChessCoach.Core.Abstractions.IAppLifecycle, WpfAppLifecycle>();
         builder.Services.AddChessCoachInfrastructure(builder.Configuration);
         builder.Services.PostConfigure<ChessCoachOptions>(o =>
         {

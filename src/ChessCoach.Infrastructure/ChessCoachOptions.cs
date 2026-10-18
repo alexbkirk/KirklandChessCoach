@@ -18,6 +18,9 @@ public sealed class ChessCoachOptions
     /// <summary>The configured data folder, or the default when none is configured.</summary>
     public string EffectiveDataDirectory => string.IsNullOrWhiteSpace(DataDirectory) ? DefaultDataDirectory : DataDirectory;
 
+    /// <summary>The GitHub repository (owner/name) whose latest release the app updates from.</summary>
+    public string UpdateRepository { get; set; } = "alexbkirk/KirklandChessCoach";
+
     public string DatabaseFileName { get; set; } = "xkirke_games.db";
 
     /// <summary>Folder with the Python analysis scripts. Resolved at startup when not set.</summary>

@@ -3,6 +3,9 @@
 @using ChessCoach.Core.Settings
 @inject ApiKeySettingsService KeySettings
 @inject ThemeState Theme
+@using ChessCoach.Core.Updates
+@implements IDisposable
+@inject UpdateService Updates
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
@@ -28,6 +31,16 @@
             </button>
         }
     </div>
+</MudPaper>
+
+<MudPaper Class="pa-6 mb-6" Style="max-width:640px">
+    <MudText Typo="Typo.h6">About and updates</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3">ChessCoach @Updates.Current. @UpdateText</MudText>
+    <MudButton Variant="Variant.Outlined" Disabled="@(Updates.State is UpdateState.Checking or UpdateState.Downloading)" OnClick="() => Updates.CheckAsync()">Check for updates</MudButton>
+    @if (Updates.Available is not null)
+    {
+        <MudText Typo="Typo.body2" Class="mt-2">The Update button is at the top of the window.</MudText>
+    }
 </MudPaper>
 
 <MudPaper Class="pa-6 mb-6" Style="max-width:640px">
@@ -107,9 +120,24 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        Updates.Changed += OnUpdatesChanged;
         _key = await KeySettings.LoadAsync();
         await RunAsync();
     }
+
+    private void OnUpdatesChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Updates.Changed -= OnUpdatesChanged;
+
+    private string UpdateText => Updates.State switch
+    {
+        UpdateState.Checking => "Checking for updates…",
+        UpdateState.Available => $"Version {Updates.Available?.Version} is available.",
+        UpdateState.Downloading => "Downloading the update…",
+        UpdateState.UpToDate => "You have the latest version.",
+        UpdateState.Failed when Updates.Available is null => Updates.Error ?? "The check did not finish.",
+        _ => "",
+    };
 
     private async Task SaveKeyAsync()
     {

@@ -1,7 +1,10 @@
 ; ChessCoach installer. Built by tools\build-installer.ps1 (which fills ..\build\app first).
 
 #define MyAppName "ChessCoach"
+; tools\build-installer.ps1 passes /DMyAppVersion=<Version from Directory.Build.props>; this is only the fallback.
+#ifndef MyAppVersion
 #define MyAppVersion "1.0.0"
+#endif
 #define MyAppExe "ChessCoach.exe"
 
 [Setup]
@@ -22,6 +25,9 @@ UninstallDisplayIcon={app}\{#MyAppExe}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; An update starts this installer while ChessCoach is still closing: wait for it, and close it if it stays open.
+CloseApplications=yes
+RestartApplications=no
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
