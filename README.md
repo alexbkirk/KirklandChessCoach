@@ -15,6 +15,8 @@ It is a Blazor Hybrid app (WPF host, .NET 10, MudBlazor UI) with SQLite for stor
 
 Windows may say the app is from an unknown publisher, because the installer is not code-signed yet. Choose **More info**, then **Run anyway**.
 
+To bring in games you have played since, press **Check for new games** at the top of the Home page. It only fetches and analyses what is new, so it is much quicker than the first import.
+
 Your games and settings are kept in `%LOCALAPPDATA%\ChessCoach`. Uninstalling the app does not delete them.
 
 ### If something goes wrong

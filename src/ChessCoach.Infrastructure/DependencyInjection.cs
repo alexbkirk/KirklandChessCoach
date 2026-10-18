@@ -1,5 +1,6 @@
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Settings;
+using ChessCoach.Core.Setup;
 using ChessCoach.Core.Stats;
 using ChessCoach.Core.Training;
 using ChessCoach.Infrastructure.Data;
@@ -37,6 +38,7 @@ public static class DependencyInjection
         services.AddSingleton<IEngineInstaller>(sp => new EngineInstaller(new HttpClient { Timeout = TimeSpan.FromMinutes(30) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
         services.AddSingleton<ISetupService, SetupService>();
         services.AddSingleton<IImportRunner, ImportRunner>();
+        services.AddSingleton<ImportCoordinator>();
         services.AddSingleton<ThemeSettingsService>();
         services.AddSingleton<IOpponentRepository, OpponentRepository>();
         services.AddSingleton<OpponentService>();
