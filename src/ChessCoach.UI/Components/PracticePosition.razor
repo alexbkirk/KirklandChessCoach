@@ -1,0 +1,170 @@
+@using ChessCoach.Core.Training
+
+<div class="puzzle-layout">
+    <div class="puzzle-board">
+        <ChessBoard @ref="_board" Fen="@Fen" Orientation="@Side" MovableColor="@(_tracker.IsFinished ? null : Side)" Marks="@Marks()" OnMove="MoveAsync" />
+    </div>
+
+    <div class="puzzle-side">
+        @Prompt
+
+        <div class="strikes mb-3" role="img" aria-label="@StrikesLabel">
+            @for (var i = 0; i < _tracker.MaxStrikes; i++)
+            {
+                <span class="strike-dot @(i < _tracker.Strikes ? "used" : "")"></span>
+            }
+            <span class="focus-muted ml-2">@StrikesLabel</span>
+        </div>
+
+        @if (!_tracker.IsFinished)
+        {
+            @if (_tracker.Hint == StrikeHint.Nudge)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">Not that one. @TriesText</MudAlert>
+            }
+            else if (_tracker.Hint == StrikeHint.Piece)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    @(_tracker.Strikes > 0 ? $"Not that one. {TriesText} " : "")Hint: the piece on <b>@BestUci[..2]</b> should move (marked on the board).
+                </MudAlert>
+            }
+            <div class="d-flex gap-2">
+                @if (_tracker.Hint is StrikeHint.None or StrikeHint.Nudge)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="ShowHint">Hint</MudButton>
+                }
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="GiveUpAsync">Show answer</MudButton>
+            </div>
+        }
+        else
+        {
+            var result = _tracker.Result!;
+            <MudPaper Class="pa-3 mb-3" Style="@(result.Solved ? "background:rgba(46,139,87,.18)" : "background:rgba(200,85,61,.18)")">
+                <MudText Typo="Typo.h6">@(result.Solved ? "Found it" : "Out of tries")</MudText>
+                <MudText Typo="Typo.body2">
+                    @if (result.FirstTry)
+                    {
+                        <span>Right first time.</span>
+                    }
+                    else if (result.Solved)
+                    {
+                        <span>@(result.Strikes == 0 ? "With a hint." : $"After {result.Strikes} wrong {(result.Strikes == 1 ? "move" : "moves")}.") Try it again later without help.</span>
+                    }
+                    else
+                    {
+                        <span>The engine's move is <b>@(BestSan ?? BestUci)</b> (green arrow). Look at why, then try again.</span>
+                    }
+                </MudText>
+            </MudPaper>
+            @if (!string.IsNullOrEmpty(Explanation))
+            {
+                <MudText Typo="Typo.body2" Class="mb-3">@Explanation</MudText>
+            }
+            @Finished?.Invoke(result)
+            <div class="d-flex gap-2 mt-3">
+                <MudButton Variant="Variant.Outlined" OnClick="TryAgainAsync">Try again</MudButton>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private readonly StrikeTracker _tracker = new();
+    private ChessBoard? _board;
+    private BoardMove? _lastMiss;
+    private int _round = 1;
+
+    /// <summary>The position before the move to find.</summary>
+    [Parameter, EditorRequired] public string Fen { get; set; } = "";
+
+    /// <summary>"white" or "black": the side to move, shown at the bottom.</summary>
+    [Parameter, EditorRequired] public string Side { get; set; } = "white";
+
+    /// <summary>Every move (UCI) that counts as right.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<string> Accept { get; set; } = [];
+
+    /// <summary>The engine's move (UCI), used for the hint and the answer.</summary>
+    [Parameter, EditorRequired] public string BestUci { get; set; } = "";
+
+    [Parameter] public string? BestSan { get; set; }
+
+    /// <summary>What to ask, shown above the strikes.</summary>
+    [Parameter] public RenderFragment? Prompt { get; set; }
+
+    /// <summary>Shown once the position is finished: why the move matters.</summary>
+    [Parameter] public string? Explanation { get; set; }
+
+    /// <summary>Extra content once finished (a Next button, a link), given the result.</summary>
+    [Parameter] public RenderFragment<PracticeResult>? Finished { get; set; }
+
+    /// <summary>Raised for every move tried, and when the player gives up, before the strike is counted.</summary>
+    [Parameter] public EventCallback<PracticeAttempt> OnAttempt { get; set; }
+
+    /// <summary>Raised once when the position ends: solved, out of tries, or given up.</summary>
+    [Parameter] public EventCallback<PracticeResult> OnFinished { get; set; }
+
+    private string TriesText => $"{_tracker.TriesLeft} {(_tracker.TriesLeft == 1 ? "try" : "tries")} left.";
+
+    private string StrikesLabel => _tracker.IsFinished
+        ? $"{_tracker.Strikes} of {_tracker.MaxStrikes} strikes"
+        : $"{_tracker.TriesLeft} {(_tracker.TriesLeft == 1 ? "try" : "tries")} left";
+
+    private bool HintShowing => _tracker.Hint == StrikeHint.Piece;
+
+    private IReadOnlyList<BoardMark> Marks()
+    {
+        var marks = new List<BoardMark>();
+        if (_tracker.State == StrikeState.Playing)
+        {
+            if (_lastMiss is { } miss) marks.Add(new BoardMark(miss.Uci[..2], "red", miss.Uci[2..4]));
+            if (HintShowing && BestUci.Length >= 2) marks.Add(new BoardMark(BestUci[..2], "yellow"));
+        }
+        else if (_tracker.State == StrikeState.Failed && BestUci.Length >= 4)
+        {
+            marks.Add(new BoardMark(BestUci[..2], "green", BestUci[2..4]));
+        }
+
+        return marks;
+    }
+
+    private async Task MoveAsync(BoardMove move)
+    {
+        if (_tracker.IsFinished) return;
+        var correct = Accept.Contains(move.Uci, StringComparer.Ordinal);
+        await OnAttempt.InvokeAsync(new PracticeAttempt(move.Uci, move.San, correct, GaveUp: false, _round, _tracker.Attempts + 1, HintShowing));
+
+        _tracker.Register(correct);
+        _lastMiss = correct ? null : move;
+        await FinishStepAsync();
+    }
+
+    private async Task GiveUpAsync()
+    {
+        if (_tracker.IsFinished) return;
+        await OnAttempt.InvokeAsync(new PracticeAttempt(null, null, Correct: false, GaveUp: true, _round, _tracker.Attempts + 1, HintShowing));
+        _tracker.GiveUp();
+        await FinishStepAsync();
+    }
+
+    private void ShowHint() => _tracker.ShowHint();
+
+    private async Task TryAgainAsync()
+    {
+        _tracker.Reset();
+        _lastMiss = null;
+        _round++;
+        await RedrawAsync();
+    }
+
+    /// <summary>Puts the board back to the position (a wrong move must not stay on it) and announces the end.</summary>
+    private async Task FinishStepAsync()
+    {
+        await RedrawAsync();
+        if (_tracker.Result is { } result) await OnFinished.InvokeAsync(result);
+    }
+
+    private async Task RedrawAsync()
+    {
+        if (_board is not null) await _board.ResetAsync();
+    }
+}
