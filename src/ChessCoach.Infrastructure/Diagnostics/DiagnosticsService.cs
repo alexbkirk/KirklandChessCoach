@@ -26,7 +26,7 @@ public sealed class DiagnosticsService(
             checks.Add(new("Database file", DiagnosticStatus.Ok, string.Create(CultureInfo.InvariantCulture, $"{o.DatabasePath} ({megabytes:F1} MB)")));
             try
             {
-                var summary = await games.GetSummaryAsync(cancellationToken);
+                var summary = await games.GetOverallSummaryAsync(cancellationToken);
                 checks.Add(new("Games", DiagnosticStatus.Ok,
                     string.Create(CultureInfo.InvariantCulture, $"{summary.GameCount:N0} games, {summary.MoveCount:N0} analysed moves, {summary.FirstGameDate} to {summary.LastGameDate}")));
 

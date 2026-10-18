@@ -1,12 +1,17 @@
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
+using ChessCoach.Core.Settings;
 using Dapper;
 
 namespace ChessCoach.Infrastructure.Data;
 
-public sealed class GameRepository(SqliteConnectionFactory connections) : IGameRepository
+public sealed class GameRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IGameRepository
 {
-    public async Task<DatabaseSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
+    public Task<DatabaseSummary> GetSummaryAsync(CancellationToken cancellationToken = default) => LoadAsync(timeClass?.Current, cancellationToken);
+
+    public Task<DatabaseSummary> GetOverallSummaryAsync(CancellationToken cancellationToken = default) => LoadAsync(null, cancellationToken);
+
+    private async Task<DatabaseSummary> LoadAsync(string? tc, CancellationToken cancellationToken)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
 
@@ -14,11 +19,12 @@ public sealed class GameRepository(SqliteConnectionFactory connections) : IGameR
         // Cast text columns explicitly, and map through a settable DTO so Dapper converts SQLite's Int64.
         var row = await connection.QuerySingleAsync<SummaryRow>(new CommandDefinition(
             """
-            SELECT (SELECT COUNT(*) FROM games) AS GameCount,
-                   (SELECT COUNT(*) FROM moves) AS MoveCount,
-                   (SELECT CAST(MIN(date) AS TEXT) FROM games) AS FirstGameDate,
-                   (SELECT CAST(MAX(date) AS TEXT) FROM games) AS LastGameDate
+            SELECT (SELECT COUNT(*) FROM games WHERE (@tc IS NULL OR timeClass = @tc)) AS GameCount,
+                   (SELECT COUNT(*) FROM moves WHERE (@tc IS NULL OR game_id IN (SELECT id FROM games WHERE timeClass = @tc))) AS MoveCount,
+                   (SELECT CAST(MIN(date) AS TEXT) FROM games WHERE (@tc IS NULL OR timeClass = @tc)) AS FirstGameDate,
+                   (SELECT CAST(MAX(date) AS TEXT) FROM games WHERE (@tc IS NULL OR timeClass = @tc)) AS LastGameDate
             """,
+            new { tc },
             cancellationToken: cancellationToken));
         return new DatabaseSummary(row.GameCount, row.MoveCount, row.FirstGameDate, row.LastGameDate);
     }

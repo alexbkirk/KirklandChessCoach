@@ -3,6 +3,9 @@
 @inject ThemeState Theme
 @inject AppNavigation AppNav
 @inject BoardView View
+@inject TimeClassView TimeView
+@inject IAppSettingsStore SettingsStore
+@using ChessCoach.Core.Abstractions
 @using ChessCoach.Core.Settings
 @using Microsoft.AspNetCore.Components.Web
 
@@ -37,11 +40,32 @@
                     <button type="button" class="tool-button" aria-pressed="@(View.FocusMode ? "true" : "false")" @onclick="View.ToggleFocus" title="@(View.FocusMode ? "Leave focus mode (Esc)" : "Focus mode: a bigger board and less text")">Focus</button>
                 </div>
             }
-            <div class="app-user">xkirke · rapid</div>
+            <div class="app-user">
+                @if (_username.Length > 0)
+                {
+                    <span>@_username</span>
+                    <span aria-hidden="true">·</span>
+                }
+                @if (TimeView.Imported.Count > 1)
+                {
+                    <label class="visually-hidden" for="time-class">Time control shown</label>
+                    <select id="time-class" class="time-select" @onchange="OnTimeClassChanged">
+                        @foreach (var timeClass in TimeView.Imported)
+                        {
+                            <option value="@timeClass" selected="@(TimeView.Selection == timeClass)">@TimeClasses.Label(timeClass)</option>
+                        }
+                        <option value="@TimeClasses.All" selected="@(TimeView.Selection == TimeClasses.All)">@TimeClasses.Label(TimeClasses.All)</option>
+                    </select>
+                }
+                else
+                {
+                    <span>@TimeClasses.Label(TimeView.Selection).ToLowerInvariant()</span>
+                }
+            </div>
         </div>
     </header>
     <UpdateBanner />
-    <main class="app-main">
+    <main class="app-main" @key="TimeView.Selection">
         @if (Theme.Loaded)
         {
             @Body
@@ -51,14 +75,18 @@
 
 @code {
     private MudTheme _theme = ThemePalettes.For(Themes.Default.Id);
+    private string _username = "";
     private string _themeId = Themes.Default.Id;
 
     protected override async Task OnInitializedAsync()
     {
         Theme.Changed += OnThemeChanged;
         AppNav.Changed += OnNavigationChanged;
-        View.Changed += OnNavigationChanged;
+        View.Changed += OnStateChanged;
+        TimeView.Changed += OnStateChanged;
         await View.LoadAsync();
+        await TimeView.LoadAsync();
+        await LoadUsernameAsync();
         await Theme.LoadAsync();
         Apply();
     }
@@ -76,10 +104,34 @@
         _theme = ThemePalettes.For(_themeId);
     }
 
-    private void OnNavigationChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnNavigationChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadUsernameAsync();   // the name can be chosen or changed on the setup page
+            StateHasChanged();
+        });
+    }
+
+    /// <summary>The name in the header is the saved username. It is only a label, so a failed read leaves it as it was.</summary>
+    private async Task LoadUsernameAsync()
+    {
+        try
+        {
+            _username = (await SettingsStore.GetAsync(AppSettingKeys.Username))?.Trim() ?? "";
+        }
+        catch (Exception)
+        {
+            // keep the last name
+        }
+    }
 
     /// <summary>In focus mode the board fills the window's height, leaving room for the header, title and the controls under it; otherwise it is the size the player chose.</summary>
     private string BoardWidth => View.FocusMode ? "clamp(320px, calc(100vh - 250px), 900px)" : $"{View.Size}px";
+
+    private Task OnTimeClassChanged(ChangeEventArgs e) => TimeView.SelectAsync(e.Value?.ToString() ?? TimeClasses.Rapid);
 
     private void OnKeyDown(KeyboardEventArgs e)
     {
@@ -90,6 +142,7 @@
     {
         Theme.Changed -= OnThemeChanged;
         AppNav.Changed -= OnNavigationChanged;
-        View.Changed -= OnNavigationChanged;
+        View.Changed -= OnStateChanged;
+        TimeView.Changed -= OnStateChanged;
     }
 }

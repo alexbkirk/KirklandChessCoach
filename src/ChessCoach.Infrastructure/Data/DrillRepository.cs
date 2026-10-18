@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Text.Json;
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
+using ChessCoach.Core.Settings;
 using Dapper;
 
 namespace ChessCoach.Infrastructure.Data;
 
-public sealed class DrillRepository(SqliteConnectionFactory connections) : IDrillRepository
+public sealed class DrillRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IDrillRepository
 {
     private const string DayFormat = "yyyy-MM-dd";
 
@@ -17,7 +18,7 @@ public sealed class DrillRepository(SqliteConnectionFactory connections) : IDril
         FROM blunder_tags t
         JOIN moves m ON m.game_id = t.game_id AND m.ply = t.ply
         JOIN games g ON g.id = m.game_id
-        WHERE t.tags LIKE '%"one_move"%'
+        WHERE t.tags LIKE '%"one_move"%' AND (@tc IS NULL OR g.timeClass = @tc)
         """;
 
     // Sound moves from roughly balanced middlegame positions, as the "safe" side of safe-or-blunder.
@@ -26,6 +27,7 @@ public sealed class DrillRepository(SqliteConnectionFactory connections) : IDril
         JOIN games g ON g.id = m.game_id
         WHERE m.is_mine = 1 AND m.is_last = 0 AND m.class IN ('best', 'good')
           AND m.ply BETWEEN 10 AND 70 AND ABS(m.eval_before) <= 300
+          AND (@tc IS NULL OR g.timeClass = @tc)
         """;
 
     private const string PositionColumns = """
@@ -38,8 +40,8 @@ public sealed class DrillRepository(SqliteConnectionFactory connections) : IDril
     public async Task<(int Blunders, int Safe)> CountCandidatesAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
-        var blunders = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COUNT(*) " + BlunderCandidates, cancellationToken: cancellationToken));
-        var safe = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COUNT(*) " + SafeCandidates, cancellationToken: cancellationToken));
+        var blunders = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COUNT(*) " + BlunderCandidates, new { tc = timeClass?.Current }, cancellationToken: cancellationToken));
+        var safe = await connection.ExecuteScalarAsync<int>(new CommandDefinition("SELECT COUNT(*) " + SafeCandidates, new { tc = timeClass?.Current }, cancellationToken: cancellationToken));
         return (blunders, safe);
     }
 
@@ -48,7 +50,7 @@ public sealed class DrillRepository(SqliteConnectionFactory connections) : IDril
         await using var connection = await connections.OpenAsync(cancellationToken);
         var row = await connection.QueryFirstOrDefaultAsync<PositionRow>(new CommandDefinition(
             PositionColumns + " " + (blunder ? BlunderCandidates : SafeCandidates) + " ORDER BY m.game_id, m.ply LIMIT 1 OFFSET @index",
-            new { index },
+            new { index, tc = timeClass?.Current },
             cancellationToken: cancellationToken));
         return row?.ToPosition();
     }

@@ -1,11 +1,12 @@
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
 using ChessCoach.Core.Stats;
+using ChessCoach.Core.Settings;
 using Dapper;
 
 namespace ChessCoach.Infrastructure.Data;
 
-public sealed class OpponentRepository(SqliteConnectionFactory connections) : IOpponentRepository
+public sealed class OpponentRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IOpponentRepository
 {
     private const string PhaseCase =
         $"CASE WHEN (ply + 1) / 2 <= 12 THEN '{OpponentCalculator.Opening}' WHEN (ply + 1) / 2 <= 30 THEN '{OpponentCalculator.Middlegame}' ELSE '{OpponentCalculator.Late}' END";
@@ -19,9 +20,9 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections) : IO
                    CAST(g.result AS TEXT) AS Result, CAST(g.ending AS TEXT) AS Ending, g.myRating AS MyRating, g.oppRating AS OppRating,
                    CAST(g.family AS TEXT) AS Family, CAST(g.opening AS TEXT) AS Opening, CAST(g.url AS TEXT) AS Url,
                    CAST(g.opponent AS TEXT) AS Opponent
-            FROM games g WHERE g.opponent = @name COLLATE NOCASE
+            FROM games g WHERE g.opponent = @name COLLATE NOCASE AND (@tc IS NULL OR g.timeClass = @tc)
             """,
-            new { name },
+            new { name, tc = timeClass?.Current },
             cancellationToken: cancellationToken));
         // CROSS JOIN: start from the opponent's few games and look moves up by primary key (see OpeningRepository).
         var plies = await connection.QueryAsync<PlyRow>(new CommandDefinition(
@@ -32,10 +33,10 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections) : IO
                    m.eval_before AS EvalBefore, m.eval_after AS EvalAfter,
                    (SELECT json_extract(n.note, '$.headline') FROM blunder_notes n WHERE n.game_id = m.game_id AND n.ply = m.ply) AS NoteHeadline
             FROM games g CROSS JOIN moves m ON m.game_id = g.id
-            WHERE g.opponent = @name COLLATE NOCASE
+            WHERE g.opponent = @name COLLATE NOCASE AND (@tc IS NULL OR g.timeClass = @tc)
             ORDER BY m.game_id, m.ply
             """,
-            new { name },
+            new { name, tc = timeClass?.Current },
             cancellationToken: cancellationToken));
         return (
             games.Select(g => new OpponentGame(g.GameId, g.Date, g.Time ?? "", g.Color ?? "", g.Result ?? "", g.Ending ?? "", g.MyRating, g.OppRating,
@@ -54,8 +55,10 @@ public sealed class OpponentRepository(SqliteConnectionFactory connections) : IO
                    100.0 * SUM(CASE WHEN class = 'blunder' THEN 1 ELSE 0 END) / COUNT(*) AS BlunderPercent
             FROM moves
             WHERE COALESCE(is_last, 0) = 0
+              AND (@tc IS NULL OR game_id IN (SELECT id FROM games WHERE timeClass = @tc))
             GROUP BY is_mine, Phase
             """,
+            new { tc = timeClass?.Current },
             cancellationToken: cancellationToken))).ToList();
         return new PhaseBaseline(
             rows.Where(r => r.IsMine != 0).ToDictionary(r => r.Phase, r => new PhaseRate(r.Moves, r.AvgCpLoss, r.BlunderPercent)),

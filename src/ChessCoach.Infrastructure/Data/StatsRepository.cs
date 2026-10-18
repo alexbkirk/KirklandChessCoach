@@ -1,11 +1,12 @@
 using System.Globalization;
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Domain;
+using ChessCoach.Core.Settings;
 using Dapper;
 
 namespace ChessCoach.Infrastructure.Data;
 
-public sealed class StatsRepository(SqliteConnectionFactory connections) : IStatsRepository
+public sealed class StatsRepository(SqliteConnectionFactory connections, TimeClassView? timeClass = null) : IStatsRepository
 {
     public async Task<IReadOnlyList<StatsGame>> LoadGamesAsync(CancellationToken cancellationToken = default)
     {
@@ -19,8 +20,10 @@ public sealed class StatsRepository(SqliteConnectionFactory connections) : IStat
                    CAST(ending AS TEXT) AS Ending, plies AS Plies, CAST(opponent AS TEXT) AS Opponent,
                    CAST(url AS TEXT) AS Url
             FROM games
+            WHERE (@tc IS NULL OR timeClass = @tc)
             ORDER BY CAST(date AS TEXT), CAST(time AS TEXT)
             """,
+            new { tc = timeClass?.Current },
             cancellationToken: cancellationToken));
 
         return rows.Select(r => new StatsGame(
@@ -48,7 +51,9 @@ public sealed class StatsRepository(SqliteConnectionFactory connections) : IStat
                    eval_before AS EvalBefore, cp_loss AS CpLoss, CAST(class AS TEXT) AS Class, clk AS Clock
             FROM moves
             WHERE is_mine = 1 AND is_last = 0
+              AND (@tc IS NULL OR game_id IN (SELECT id FROM games WHERE timeClass = @tc))
             """,
+            new { tc = timeClass?.Current },
             cancellationToken: cancellationToken));
 
         return rows.Select(r => new MoveSample(

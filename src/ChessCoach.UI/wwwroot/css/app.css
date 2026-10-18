@@ -475,3 +475,8 @@ html, body {
 .mud-button-outlined.mud-button-outlined-error { border-color: var(--mud-palette-error); }
 .mud-button-outlined.mud-button-outlined-warning { border-color: var(--mud-palette-warning); }
 .mud-button-outlined.mud-button-outlined-info { border-color: var(--mud-palette-info); }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.app-user { display: flex; align-items: center; gap: 6px; }
+.time-select { padding: 4px 10px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: 999px; background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.time-select:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: 2px; }
