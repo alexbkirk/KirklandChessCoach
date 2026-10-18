@@ -201,7 +201,7 @@ html, body {
 }
 
 .puzzle-board {
-    flex: 0 1 520px;
+    flex: 0 1 var(--board-size, 520px);
     min-width: 280px;
 }
 
@@ -219,6 +219,7 @@ html, body {
 .drill-card .chess-board {
     max-width: 100%;
     height: auto;
+    max-height: 520px;
     aspect-ratio: 1 / 1;
 }
 
@@ -450,3 +451,18 @@ html, body {
 .back-button:hover:not([aria-disabled="true"]) { background: var(--mud-palette-action-default-hover); }
 .back-button:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: 2px; }
 .back-button[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+
+.app-right { display: flex; align-items: center; gap: 16px; }
+.board-tools { display: flex; gap: 6px; }
+.tool-button { padding: 5px 12px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: 999px; background: transparent; color: var(--mud-palette-text-primary); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.tool-button:hover:not([aria-disabled="true"]) { background: var(--mud-palette-action-default-hover); }
+.tool-button:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: 2px; }
+.tool-button[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.tool-button[aria-pressed="true"] { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-color: var(--mud-palette-primary); }
+.app-shell:focus { outline: none; }
+
+/* Focus mode: a bigger board and only what is needed to use it. Anything marked focus-hide is explanation, not controls. */
+.focus-mode .focus-hide,
+.focus-mode .page-subtitle,
+.focus-mode .app-nav,
+.focus-mode .app-user { display: none !important; }

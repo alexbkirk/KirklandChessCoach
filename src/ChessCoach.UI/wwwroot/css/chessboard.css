@@ -1,8 +1,8 @@
 .chess-board {
     width: 100%;
-    max-width: 520px;
-    height: min(520px, 100vw - 80px);
-    max-height: 520px;
+    max-width: var(--board-size, 520px);
+    height: min(var(--board-size, 520px), 100vw - 80px);
+    max-height: var(--board-size, 520px);
     position: relative;
 }
 

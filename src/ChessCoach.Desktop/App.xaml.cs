@@ -82,6 +82,7 @@ public partial class App : Application
         builder.Services.AddScoped<ChessCoach.UI.ChessRules>();
         builder.Services.AddScoped<ChessCoach.UI.ThemeState>();
         builder.Services.AddScoped<ChessCoach.UI.AppNavigation>();
+        builder.Services.AddScoped<ChessCoach.Core.Settings.BoardView>();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif

@@ -6,6 +6,7 @@
 @using ChessCoach.Core.Updates
 @implements IDisposable
 @inject UpdateService Updates
+@inject BoardView View
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
@@ -31,6 +32,13 @@
             </button>
         }
     </div>
+</MudPaper>
+
+<MudPaper Class="pa-6 mb-6" Style="max-width:640px">
+    <MudText Typo="Typo.h6">Board size</MudText>
+    <MudText Typo="Typo.body2" Class="mb-3">How big the boards are on the puzzle, practice, opening and game review pages. You can also change it from the header while a board is on screen.</MudText>
+    <MudSlider T="int" Value="View.Size" ValueChanged="View.SetSizeAsync" Min="BoardSizes.Min" Max="BoardSizes.Max" Step="BoardSizes.Step" Immediate="false" aria-label="Board size in pixels" />
+    <MudText Typo="Typo.caption">@View.Size pixels across</MudText>
 </MudPaper>
 
 <MudPaper Class="pa-6 mb-6" Style="max-width:640px">
