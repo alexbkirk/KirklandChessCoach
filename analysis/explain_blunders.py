@@ -1,7 +1,7 @@
-"""Explain the daily drill's blunders (Stockfish depth 12), stored in table `blunder_notes`.
+"""Explain every one of your blunders (Stockfish depth 12), stored in table `blunder_notes`.
 
-The drill's blunder pool is every blunder tagged "one_move" in `blunder_tags`. Each note has the same fields as a
-coach note's explanation (see explain.py): headline, why lines, the leading motif, the better move and line.
+The daily drill and the focus card both read these notes. Each note has the same fields as a coach note's
+explanation (see explain.py): headline, why lines, the leading motif, the better move and line, and the swing.
 Usage: python -I explain_blunders.py --data-dir <folder> [--depth 12] [--threads 4] [--progress jsonl]
 Resumable: only blunders without a note are processed.
 """
@@ -19,13 +19,12 @@ ap.add_argument("--threads", type=int, default=4)
 a = ap.parse_args()
 ctx = Context(a)
 db = ctx.connect()
-todo = db.execute("""select m.game_id, m.ply, m.fen_before, m.uci, m.san, m.clk from blunder_tags t
-    join moves m on m.game_id = t.game_id and m.ply = t.ply
-    where t.tags like '%"one_move"%'
-      and not exists (select 1 from blunder_notes n where n.game_id = t.game_id and n.ply = t.ply)
+todo = db.execute("""select m.game_id, m.ply, m.fen_before, m.uci, m.san, m.clk from moves m
+    where m.is_mine = 1 and m.is_last = 0 and m.class = 'blunder'
+      and not exists (select 1 from blunder_notes n where n.game_id = m.game_id and n.ply = m.ply)
     order by m.game_id, m.ply""").fetchall()
 if not todo:
-    ctx.progress("explain", 0, 0, "Every drill blunder already has a note")
+    ctx.progress("explain", 0, 0, "Every blunder already has a note")
     sys.exit(0)
 
 spent, usual = load_time_usage(db)
@@ -44,6 +43,6 @@ for i, (gid, ply, fen, uci, san, clk) in enumerate(todo, 1):
     db.execute("insert or replace into blunder_notes values (?,?,?)", (gid, ply, json.dumps(note, ensure_ascii=False)))
     if i % 25 == 0 or i == len(todo):
         db.commit(); el = time.time() - t0
-        ctx.progress("explain", i, len(todo), f"Explained {i} of {len(todo)} drill blunders (eta {el / i * (len(todo) - i):.0f}s)")
+        ctx.progress("explain", i, len(todo), f"Explained {i} of {len(todo)} blunders (eta {el / i * (len(todo) - i):.0f}s)")
 eng.quit()
-ctx.progress("explain", len(todo), len(todo), f"{len(todo)} drill blunders explained")
+ctx.progress("explain", len(todo), len(todo), f"{len(todo)} blunders explained")
