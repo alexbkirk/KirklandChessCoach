@@ -1,5 +1,6 @@
 using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Settings;
+using ChessCoach.Core.Review;
 using ChessCoach.Core.Setup;
 using ChessCoach.Core.Stats;
 using ChessCoach.Core.Training;
@@ -35,6 +36,8 @@ public static class DependencyInjection
         services.AddSingleton<OpeningReportService>();
         services.AddSingleton<OpeningVariationService>();
         services.AddSingleton<IStatsRepository, StatsRepository>();
+        services.AddSingleton<IGameReviewRepository, GameReviewRepository>();
+        services.AddSingleton<GameReviewService>();
         services.AddSingleton<StatsService>();
         services.AddSingleton<IAppSettingsStore, AppSettingsStore>();
         services.AddSingleton<IEngineInstaller>(sp => new EngineInstaller(new HttpClient { Timeout = TimeSpan.FromMinutes(30) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
