@@ -22,9 +22,9 @@ public static class ThemePalettes
         var dark = Themes.Find(id).Dark;
         var palette = id switch
         {
-            Themes.Evergreen => Dark(background: "#0D1512", surface: "#13201B", primary: "#8BC98A", secondary: "#E39A5B", text: "#DDE8E1", muted: "#8EA79A", divider: "#22362D", onPrimary: "#0D1512"),
+            Themes.Evergreen => Dark(background: "#0D1512", surface: "#13201B", primary: "#8BC98A", secondary: "#E39A5B", text: "#DDE8E1", muted: "#8EA79A", divider: "#22362D", edge: "#6B8478", onPrimary: "#0D1512"),
             Themes.Birch => Light(),
-            _ => Dark(background: "#1C1510", surface: "#241B15", primary: "#C9A15E", secondary: "#B5703F", text: "#EFE4D2", muted: "#BFAE97", divider: "#3A2C21", onPrimary: "#241B15"),
+            _ => Dark(background: "#1C1510", surface: "#241B15", primary: "#C9A15E", secondary: "#B5703F", text: "#EFE4D2", muted: "#BFAE97", divider: "#3A2C21", edge: "#8A7A68", onPrimary: "#241B15"),
         };
 
         return new MudTheme
@@ -46,13 +46,12 @@ public static class ThemePalettes
         Button = new ButtonTypography { TextTransform = "none", FontWeight = "600" },
     };
 
-    private static (PaletteLight Light, PaletteDark Dark) Dark(string background, string surface, string primary, string secondary, string text, string muted, string divider, string onPrimary) =>
+    private static (PaletteLight Light, PaletteDark Dark) Dark(string background, string surface, string primary, string secondary, string text, string muted, string divider, string edge, string onPrimary) =>
         (new PaletteLight(), new PaletteDark
         {
             Primary = primary,
             PrimaryContrastText = onPrimary,
             Secondary = secondary,
-            SecondaryContrastText = "#FFFFFF",
             Background = background,
             BackgroundGray = surface,
             Surface = surface,
@@ -67,12 +66,18 @@ public static class ThemePalettes
             Divider = divider,
             DividerLight = divider,
             LinesDefault = divider,
-            LinesInputs = divider,
+            LinesInputs = edge,
             TableLines = divider,
             Success = "#5FB47F",
             Warning = "#E0A84C",
             Error = "#E0705A",
             Info = "#6FA8C7",
+            // dark text on these lighter colours (white on them was 2.1 to 3.2:1; these are 5.7 to 8.7:1)
+            SuccessContrastText = background,
+            WarningContrastText = background,
+            ErrorContrastText = background,
+            InfoContrastText = background,
+            SecondaryContrastText = background,
         });
 
     private static (PaletteLight Light, PaletteDark Dark) Light() =>
@@ -96,11 +101,15 @@ public static class ThemePalettes
             Divider = "#E2DACB",
             DividerLight = "#E2DACB",
             LinesDefault = "#E2DACB",
-            LinesInputs = "#CFC6B3",
+            LinesInputs = "#7F7767",
             TableLines = "#E2DACB",
-            Success = "#3F7D4F",
-            Warning = "#B07A1F",
+            Success = "#37704A",
+            Warning = "#86590F",
             Error = "#B3402F",
             Info = "#3F6B73",
+            SuccessContrastText = "#FFFFFF",
+            WarningContrastText = "#FFFFFF",
+            ErrorContrastText = "#FFFFFF",
+            InfoContrastText = "#FFFFFF",
         }, new PaletteDark());
 }

@@ -421,7 +421,7 @@ html, body {
 }
 
 .habit-bar { display: grid; grid-template-columns: 9rem 1fr 7rem; gap: 0.5rem; align-items: center; margin: 0.35rem 0; font-size: 0.9rem; }
-.habit-bar.faded { opacity: 0.45; }
+.habit-bar.faded .habit-track { opacity: 0.4; }
 .habit-track { display: block; height: 0.6rem; background: var(--mud-palette-background-gray); border-radius: 4px; overflow: hidden; }
 .habit-fill { display: block; height: 100%; background: var(--mud-palette-primary); }
 .habit-value { text-align: right; font-variant-numeric: tabular-nums; }
@@ -466,3 +466,12 @@ html, body {
 .focus-mode .page-subtitle,
 .focus-mode .app-nav,
 .focus-mode .app-user { display: none !important; }
+
+/* MudBlazor draws an outlined button's border faintly (about 1.3:1 for the default one, and the colour at low opacity for the others); use the palette's own colours, which meet 3:1 on every theme. */
+.mud-button-outlined.mud-button-outlined-default { border-color: var(--mud-palette-lines-inputs); }
+.mud-button-outlined.mud-button-outlined-primary { border-color: var(--mud-palette-primary); }
+.mud-button-outlined.mud-button-outlined-secondary { border-color: var(--mud-palette-secondary); }
+.mud-button-outlined.mud-button-outlined-success { border-color: var(--mud-palette-success); }
+.mud-button-outlined.mud-button-outlined-error { border-color: var(--mud-palette-error); }
+.mud-button-outlined.mud-button-outlined-warning { border-color: var(--mud-palette-warning); }
+.mud-button-outlined.mud-button-outlined-info { border-color: var(--mud-palette-info); }
