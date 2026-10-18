@@ -1,7 +1,9 @@
 @page "/"
 @inject IGameRepository Games
 @inject ISetupService SetupFlow
+@using ChessCoach.Core.Navigation
 @inject NavigationManager Navigation
+@inject AppNavigation AppNav
 
 <PageTitle>Home · ChessCoach</PageTitle>
 
@@ -36,7 +38,7 @@ else
         <RefreshPanel OnFinished="ReloadAsync" />
     </div>
 
-    <MudTabs @key="_reload" Elevation="0" Rounded="true" TabPanelsClass="pt-6" @bind-ActivePanelIndex="_tab">
+    <MudTabs @key="_reload" Elevation="0" Rounded="true" TabPanelsClass="pt-6" ActivePanelIndex="@_tab" ActivePanelIndexChanged="SetTab">
         <MudTabPanel Text="Today">
             <div class="section-gap">
                 <div class="today-grid">
@@ -44,13 +46,13 @@ else
                         <div class="eyebrow mb-2">Puzzles</div>
                         <MudText Typo="Typo.h6" Class="mb-1">Find the best move</MudText>
                         <MudText Typo="Typo.body2" Class="mb-4">Positions from your own games, repeated until you find them.</MudText>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => _tab = 1">Start puzzles</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => SetTab(1)">Start puzzles</MudButton>
                     </MudPaper>
                     <MudPaper Class="pa-6">
                         <div class="eyebrow mb-2">Daily drill</div>
                         <MudText Typo="Typo.h6" Class="mb-1">Three blunder checks</MudText>
                         <MudText Typo="Typo.body2" Class="mb-4">A fresh set of three positions each day.</MudText>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="() => _tab = 2">Open today's drill</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="() => SetTab(2)">Open today's drill</MudButton>
                     </MudPaper>
                 </div>
                 <MudPaper Class="pa-6">
@@ -79,8 +81,21 @@ else
 @code {
     private DatabaseSummary? _summary;
     private string? _error;
+    private const int TabCount = 4;
+
+    /// <summary>The tab lives in the address, so going Back to Home shows the same one.</summary>
+    [SupplyParameterFromQuery(Name = "tab")] public string? TabParameter { get; set; }
+
     private int _tab;
     private int _reload;
+
+    protected override void OnParametersSet() => _tab = QueryChoice.Tab(TabParameter, TabCount);
+
+    private void SetTab(int tab)
+    {
+        _tab = tab;
+        AppNav.ReplaceQuery(new Dictionary<string, object?> { ["tab"] = tab == 0 ? null : tab });
+    }
 
     /// <summary>New games arrived: refresh the headline numbers and rebuild the tabs, so they show the new data.</summary>
     private async Task ReloadAsync()
