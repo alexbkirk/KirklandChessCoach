@@ -2,12 +2,35 @@
 @inject IDiagnosticsService Diagnostics
 @using ChessCoach.Core.Settings
 @inject ApiKeySettingsService KeySettings
+@inject ThemeState Theme
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
+<MudText Typo="Typo.h4" Class="page-title">Settings</MudText>
+<div class="page-subtitle">Appearance, the AI coach and a health check of the app's data and tools.</div>
 
-<MudPaper Class="pa-4 mb-6" Style="max-width:640px">
+<MudPaper Class="pa-6 mb-6">
+    <MudText Typo="Typo.h6">Appearance</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4">Choose a colour theme. It is saved and used every time you open the app.</MudText>
+    <div class="d-flex flex-wrap gap-4">
+        @foreach (var option in Themes.All)
+        {
+            var swatch = ThemePalettes.Swatch(option.Id);
+            <button type="button" class="theme-card @(option.Id == Theme.Current.Id ? "selected" : "")" aria-pressed="@(option.Id == Theme.Current.Id ? "true" : "false")"
+                    @onclick="() => ChooseThemeAsync(option.Id)">
+                <div class="theme-swatch" style="background:@swatch.Background">
+                    <span style="background:@swatch.Surface"></span>
+                    <span style="background:@swatch.Accent"></span>
+                    <span style="background:@swatch.Text"></span>
+                </div>
+                <div><b>@option.Name</b></div>
+                <div class="eyebrow" style="text-transform:none; letter-spacing:0">@option.Description</div>
+            </button>
+        }
+    </div>
+</MudPaper>
+
+<MudPaper Class="pa-6 mb-6" Style="max-width:640px">
     <MudText Typo="Typo.h6">AI coach</MudText>
     <MudText Typo="Typo.body2" Class="mb-3">
         The coach uses an Anthropic API key. It is saved only on this computer, encrypted for your Windows account
@@ -78,6 +101,8 @@ else
     private IReadOnlyList<DiagnosticCheck>? _checks;
 
     private ApiKeyView? _key;
+
+    private Task ChooseThemeAsync(string id) => Theme.SetAsync(id);
     private string? _newKey;
 
     protected override async Task OnInitializedAsync()

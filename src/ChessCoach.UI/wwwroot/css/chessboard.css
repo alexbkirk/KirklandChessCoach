@@ -6,6 +6,19 @@
     position: relative;
 }
 
+/* The board squares are drawn from the theme's two colours (a 2x2 checker pattern), replacing chessground's brown image.
+   The top-left square is light in either orientation. */
+cg-board {
+    background-color: var(--board-light, #f0d9b5) !important;
+    background-image: conic-gradient(var(--board-dark, #b58863) 0 25%, var(--board-light, #f0d9b5) 0 50%, var(--board-dark, #b58863) 0 75%, var(--board-light, #f0d9b5) 0) !important;
+    background-size: 25% 25% !important;
+}
+
+.chess-board {
+    border-radius: 6px;
+    box-shadow: 0 0 0 6px var(--board-frame, transparent);
+}
+
 /* chessground tags pieces and coordinates with the classes "white"/"black", which collide with MudBlazor's
    colour utilities (.white/.black { background-color: ... !important }). A more specific !important rule wins. */
 .cg-wrap piece,
