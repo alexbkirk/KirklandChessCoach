@@ -38,6 +38,16 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # the analysis tests run the Python scripts from analysis\.venv, as scripts\setup.ps1 builds it on a developer's machine
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Create the analysis environment
+        run: |
+          python -m venv analysis\.venv
+          analysis\.venv\Scripts\python.exe -m pip install --disable-pip-version-check -r analysisequirements.txt
+
       - name: Run the tests
         run: dotnet test ChessCoach.sln -c Release
 
