@@ -56,7 +56,7 @@
             <MudText Typo="Typo.body2" Class="mt-2">@((MarkupString)Result)</MudText>
             @if (Slot.Position.Note is { } note)
             {
-                <div class="drill-note mt-2">
+                <div class="drill-note mt-2 focus-hide">
                     @if (!string.IsNullOrEmpty(note.Motif))
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-0">@note.Motif</MudChip>
@@ -72,7 +72,7 @@
                     }
                 </div>
             }
-            <MudText Typo="Typo.caption"><a href="@Slot.Position.Url" target="_blank" rel="noopener">view game</a> · @Slot.Position.Date vs <a href="@OpponentLinks.For(Slot.Position.Opponent)">@Slot.Position.Opponent</a></MudText>
+            <MudText Typo="Typo.caption" Class="focus-hide"><a href="@Slot.Position.Url" target="_blank" rel="noopener">view game</a> · @Slot.Position.Date vs <a href="@OpponentLinks.For(Slot.Position.Opponent)">@Slot.Position.Opponent</a></MudText>
         }
     }
 </MudPaper>

@@ -1,6 +1,7 @@
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject BoardView View
 
 <div @ref="_element" class="chess-board cg-wrap"></div>
 
@@ -33,6 +34,8 @@
 
     /// <summary>Raised with the square name (e.g. "e4") when <see cref="Selectable"/> is true and a square is clicked.</summary>
     [Parameter] public EventCallback<string> OnSquareClick { get; set; }
+
+    protected override void OnInitialized() => View.BoardAppeared();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -78,6 +81,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        View.BoardGone();
         if (_board is not null)
         {
             await _board.InvokeVoidAsync("destroy");

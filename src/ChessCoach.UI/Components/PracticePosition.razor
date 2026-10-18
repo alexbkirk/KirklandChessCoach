@@ -58,7 +58,7 @@
             </MudPaper>
             @if (!string.IsNullOrEmpty(Explanation))
             {
-                <MudText Typo="Typo.body2" Class="mb-3">@Explanation</MudText>
+                <MudText Typo="Typo.body2" Class="mb-3 focus-hide">@Explanation</MudText>
             }
             @Finished?.Invoke(result)
             <div class="d-flex gap-2 mt-3">

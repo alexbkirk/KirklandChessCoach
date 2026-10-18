@@ -9,7 +9,7 @@
 
 <PageTitle>@(_review is null ? "Game review" : $"vs {_review.Game.Opponent}") · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="study">Study</a></MudText>
+<MudText Typo="Typo.caption" Class="focus-hide"><a href="">Home</a> · <a href="study">Study</a></MudText>
 
 @if (_error is not null)
 {
@@ -28,7 +28,7 @@ else
 {
     var game = _review.Game;
     <MudText Typo="Typo.h4" Class="mt-1">vs @game.Opponent</MudText>
-    <MudText Typo="Typo.body1" Class="mb-3">
+    <MudText Typo="Typo.body1" Class="mb-3 focus-hide">
         @game.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) · @TimeControlLabel.From(game.TimeControl) · you played @game.Color · @game.MyRating – @game.OppRating
         · <MudChip T="string" Size="Size.Small" Color="@ResultColor(game.Result)">@game.Result</MudChip> @game.Ending
         @if (!string.IsNullOrEmpty(game.Opening))
@@ -52,7 +52,7 @@ else
     }
     else
     {
-        <div class="kpis mb-4">
+        <div class="kpis mb-4 focus-hide">
             <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your inaccuracies</MudText><MudText Typo="Typo.h5">@_summary.Inaccuracies</MudText></MudPaper>
             <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your mistakes</MudText><MudText Typo="Typo.h5">@_summary.Mistakes</MudText></MudPaper>
             <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your blunders</MudText><MudText Typo="Typo.h5">@_summary.Blunders</MudText></MudPaper>
@@ -72,7 +72,7 @@ else
                     <MudButton Variant="Variant.Text" Size="Size.Small" Disabled="@(_nextKey is null)" OnClick="() => GoToAsync(_nextKey!.Value)">Next mistake</MudButton>
                 </div>
                 <MudCheckBox T="bool" @bind-Value="_showBest" Label="Show the engine's best move here" Dense="true" />
-                <MudText Typo="Typo.caption">Click the board, then use the left and right arrow keys to step through the game.</MudText>
+                <MudText Typo="Typo.caption" Class="focus-hide">Click the board, then use the left and right arrow keys to step through the game.</MudText>
 
                 <svg class="review-graph mt-2" viewBox="0 0 1000 120" preserveAspectRatio="none" role="img" aria-label="How the game swung: White's winning chances after each move">
                     <path d="@AreaPath" fill="var(--mud-palette-primary)" fill-opacity="0.25" />
@@ -89,7 +89,7 @@ else
                         <rect x="@((X(position) - Step / 2).ToString("0.##", CultureInfo.InvariantCulture))" y="0" width="@Step.ToString("0.##", CultureInfo.InvariantCulture)" height="120" fill="transparent" @onclick="() => GoToAsync(position)" style="cursor:pointer" />
                     }
                 </svg>
-                <MudText Typo="Typo.caption">White's winning chances after each move. Red dots are your mistakes and blunders. Click to jump.</MudText>
+                <MudText Typo="Typo.caption" Class="focus-hide">White's winning chances after each move. Red dots are your mistakes and blunders. Click to jump.</MudText>
             </div>
 
             <div class="puzzle-side">

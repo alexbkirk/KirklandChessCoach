@@ -39,22 +39,22 @@ else
             <MudText Typo="Typo.body2" Class="mb-2">The best line was <b>@puzzle.Note.BetterSan</b> (@puzzle.Note.BetterLine).</MudText>
             @if (!string.IsNullOrEmpty(puzzle.Note.Motif))
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-0 mt-2">@puzzle.Note.Motif</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Class="ml-0 mt-2 focus-hide">@puzzle.Note.Motif</MudChip>
             }
-            <MudText Typo="Typo.subtitle1" Class="mt-1">@puzzle.Note.Headline</MudText>
+            <MudText Typo="Typo.subtitle1" Class="mt-1 focus-hide">@puzzle.Note.Headline</MudText>
             @foreach (var line in puzzle.Note.Why)
             {
-                <MudText Typo="Typo.body2" Class="mb-1">@line</MudText>
+                <MudText Typo="Typo.body2" Class="mb-1 focus-hide">@line</MudText>
             }
             @if (!string.IsNullOrEmpty(puzzle.Note.Pattern))
             {
-                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">@puzzle.Note.Pattern</MudAlert>
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2 focus-hide">@puzzle.Note.Pattern</MudAlert>
             }
             @if (!string.IsNullOrWhiteSpace(puzzle.Note.MaiaText))
             {
-                <MudText Typo="Typo.caption" Class="mt-2">@puzzle.Note.MaiaText</MudText>
+                <MudText Typo="Typo.caption" Class="mt-2 focus-hide">@puzzle.Note.MaiaText</MudText>
             }
-            <MudText Typo="Typo.caption" Class="mt-2">In the game you played @puzzle.PlayedSan (eval @puzzle.Note.EvalBefore → @puzzle.Note.EvalAfter).</MudText>
+            <MudText Typo="Typo.caption" Class="mt-2 focus-hide">In the game you played @puzzle.PlayedSan (eval @puzzle.Note.EvalBefore → @puzzle.Note.EvalAfter).</MudText>
             <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync">
                 @(_index + 1 < _set.Count ? "Next puzzle" : "Next 5 puzzles")
             </MudButton>

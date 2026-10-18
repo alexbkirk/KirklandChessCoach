@@ -4,7 +4,7 @@
 
 <PageTitle>@(_scope?.Name ?? "Opening") · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
+<MudText Typo="Typo.caption" Class="focus-hide"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
 
 @if (_scope is null)
 {
@@ -15,7 +15,7 @@ else
     <MudText Typo="Typo.h4" Class="mt-1">@_scope.Name</MudText>
     @if (_review is not null)
     {
-        <MudText Typo="Typo.body1" Class="mb-3">
+        <MudText Typo="Typo.body1" Class="mb-3 focus-hide">
             as @(Side) · @_review.Record.Games games · @Percent(_review.Record.WinPercent) wins
             (@_review.Record.Wins W, @_review.Record.Draws D, @_review.Record.Losses L)
             @if (_scope.Opening is not null && _family is not null)
@@ -62,20 +62,20 @@ else
                                 }
                             </div>
                             <MudText Typo="Typo.subtitle1"><b>@MoveNumber(move.Ply, true)@move.San</b></MudText>
-                            <MudText Typo="Typo.body2" Class="mb-2">
+                            <MudText Typo="Typo.body2" Class="mb-2 focus-hide">
                                 @(move.IsMine ? "You" : "Your opponent") played @move.San here in @move.Games of the @move.Reached games that reached this position.
                             </MudText>
                             @if (move.IsMine)
                             {
                                 @if (move.BestSan is not null && move.BestUci != move.Uci && move.AvgCpLoss >= NoticeableCp)
                                 {
-                                    <MudAlert Severity="@(move.AvgCpLoss >= 50 ? Severity.Warning : Severity.Info)" Dense="true" Class="mb-2">
+                                    <MudAlert Severity="@(move.AvgCpLoss >= 50 ? Severity.Warning : Severity.Info)" Dense="true" Class="mb-2 focus-hide">
                                         The engine prefers <b>@move.BestSan</b> (green arrow). @move.San loses @Pawns(move.AvgCpLoss) on average@(move.Slips > 0 ? $", and lost a pawn or more in {move.Slips} of your games" : "").
                                     </MudAlert>
                                 }
                                 else
                                 {
-                                    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-2">
+                                    <MudAlert Severity="Severity.Success" Dense="true" Class="mb-2 focus-hide">
                                         @(move.BestUci == move.Uci ? "This is the engine's choice too." : $"A fine move: the engine's top choice is {move.BestSan}, but {move.San} is within a fraction of a pawn.")
                                     </MudAlert>
                                 }

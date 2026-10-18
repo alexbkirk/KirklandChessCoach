@@ -2,13 +2,16 @@
 @implements IDisposable
 @inject ThemeState Theme
 @inject AppNavigation AppNav
+@inject BoardView View
+@using ChessCoach.Core.Settings
+@using Microsoft.AspNetCore.Components.Web
 
 <MudThemeProvider Theme="_theme" IsDarkMode="Theme.Current.Dark" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="app-shell theme-@Theme.Current.Id">
+<div class="app-shell theme-@Theme.Current.Id @(View.FocusMode ? "focus-mode" : "")" style="--board-size:@BoardWidth" tabindex="-1" @onkeydown="OnKeyDown">
     <header class="app-header">
         <div class="app-left">
             <button type="button" class="back-button" aria-disabled="@(AppNav.CanGoBack ? "false" : "true")" @onclick="AppNav.GoBack" title="Back to the previous page">
@@ -25,7 +28,17 @@
             <NavLink class="nav-pill" ActiveClass="active" href="study">Study</NavLink>
             <NavLink class="nav-pill" ActiveClass="active" href="settings">Settings</NavLink>
         </nav>
-        <div class="app-user">xkirke · rapid</div>
+        <div class="app-right">
+            @if (View.BoardsOnPage > 0)
+            {
+                <div class="board-tools" role="group" aria-label="Board view">
+                    <button type="button" class="tool-button" aria-disabled="@(View.CanShrink ? "false" : "true")" @onclick="() => View.ChangeSizeAsync(false)" title="Make the board smaller">Board −</button>
+                    <button type="button" class="tool-button" aria-disabled="@(View.CanGrow ? "false" : "true")" @onclick="() => View.ChangeSizeAsync(true)" title="Make the board bigger">Board +</button>
+                    <button type="button" class="tool-button" aria-pressed="@(View.FocusMode ? "true" : "false")" @onclick="View.ToggleFocus" title="@(View.FocusMode ? "Leave focus mode (Esc)" : "Focus mode: a bigger board and less text")">Focus</button>
+                </div>
+            }
+            <div class="app-user">xkirke · rapid</div>
+        </div>
     </header>
     <UpdateBanner />
     <main class="app-main">
@@ -44,6 +57,8 @@
     {
         Theme.Changed += OnThemeChanged;
         AppNav.Changed += OnNavigationChanged;
+        View.Changed += OnNavigationChanged;
+        await View.LoadAsync();
         await Theme.LoadAsync();
         Apply();
     }
@@ -63,9 +78,18 @@
 
     private void OnNavigationChanged() => _ = InvokeAsync(StateHasChanged);
 
+    /// <summary>In focus mode the board fills the window's height, leaving room for the header, title and the controls under it; otherwise it is the size the player chose.</summary>
+    private string BoardWidth => View.FocusMode ? "clamp(320px, calc(100vh - 250px), 900px)" : $"{View.Size}px";
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") View.ExitFocus();
+    }
+
     public void Dispose()
     {
         Theme.Changed -= OnThemeChanged;
         AppNav.Changed -= OnNavigationChanged;
+        View.Changed -= OnNavigationChanged;
     }
 }
