@@ -3,7 +3,7 @@
 @inject WeeklyFocusService FocusService
 
 <div class="d-flex align-baseline justify-space-between flex-wrap gap-2 mb-3">
-    <MudText Typo="Typo.h6">Your focus</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">Your focus</MudText>
     @if (_focus is { From: { } from, To: { } to })
     {
         <MudText Typo="Typo.caption" Class="focus-muted">@Capitalised(_focus.Window) · @Month(from) – @Month(to)</MudText>
@@ -33,7 +33,7 @@ else
     var max = Math.Max(1, top.Max(t => t.Count));
     <div class="focus-grid">
         <div>
-            <MudText Typo="Typo.h5" Class="mb-1">@focus.Label</MudText>
+            <MudText Typo="Typo.h5" HtmlTag="h3" Class="mb-1">@focus.Label</MudText>
             <MudText Typo="Typo.body1" Class="mb-3"><b>@top[0].Count</b> of the @(_focus.BlunderCount - _focus.OtherCount) blunders in these games that came down to a single tactic.</MudText>
             <MudText Typo="Typo.body2" Class="mb-2">@focus.Description</MudText>
             <MudText Typo="Typo.body2" Class="mb-2"><b>Try this:</b> @focus.TryThis</MudText>

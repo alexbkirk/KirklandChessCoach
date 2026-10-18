@@ -27,7 +27,7 @@ else if (_review is null)
 else
 {
     var game = _review.Game;
-    <MudText Typo="Typo.h4" Class="mt-1">vs @game.Opponent</MudText>
+    <MudText Typo="Typo.h4" HtmlTag="h1" Class="mt-1">vs @game.Opponent</MudText>
     <MudText Typo="Typo.body1" Class="mb-3 focus-hide">
         @game.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) · @TimeControlLabel.From(game.TimeControl) · you played @game.Color · @game.MyRating – @game.OppRating
         · <MudChip T="string" Size="Size.Small" Color="@ResultColor(game.Result)">@game.Result</MudChip> @game.Ending
@@ -53,10 +53,10 @@ else
     else
     {
         <div class="kpis mb-4 focus-hide">
-            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your inaccuracies</MudText><MudText Typo="Typo.h5">@_summary.Inaccuracies</MudText></MudPaper>
-            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your mistakes</MudText><MudText Typo="Typo.h5">@_summary.Mistakes</MudText></MudPaper>
-            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your blunders</MudText><MudText Typo="Typo.h5">@_summary.Blunders</MudText></MudPaper>
-            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Avg centipawn loss</MudText><MudText Typo="Typo.h5">@_summary.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your inaccuracies</MudText><MudText Typo="Typo.h5" HtmlTag="p">@_summary.Inaccuracies</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your mistakes</MudText><MudText Typo="Typo.h5" HtmlTag="p">@_summary.Mistakes</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your blunders</MudText><MudText Typo="Typo.h5" HtmlTag="p">@_summary.Blunders</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Avg centipawn loss</MudText><MudText Typo="Typo.h5" HtmlTag="p">@_summary.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</MudText></MudPaper>
         </div>
 
         <div class="puzzle-layout">
@@ -96,7 +96,7 @@ else
                 <MudPaper Class="pa-4 mb-4">
                     @if (CurrentMove is { } move)
                     {
-                        <MudText Typo="Typo.h6">@ReviewTimeline.MoveLabel(move.Ply, move.San)@(_notes.TryGetValue(move.Ply, out var shown) && shown.Glyph is not null ? " " + shown.Glyph : "")</MudText>
+                        <MudText Typo="Typo.h6" HtmlTag="h2">@ReviewTimeline.MoveLabel(move.Ply, move.San)@(_notes.TryGetValue(move.Ply, out var shown) && shown.Glyph is not null ? " " + shown.Glyph : "")</MudText>
                         <MudText Typo="Typo.body2">
                             @(move.IsMine ? "Your move" : "Their move")
                             @if (move.Class.Length > 0)
@@ -116,7 +116,7 @@ else
                     }
                     else
                     {
-                        <MudText Typo="Typo.h6">Starting position</MudText>
+                        <MudText Typo="Typo.h6" HtmlTag="h2">Starting position</MudText>
                         <MudText Typo="Typo.body2">Step through the game, or jump to your next mistake.</MudText>
                     }
                 </MudPaper>

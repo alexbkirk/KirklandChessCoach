@@ -10,7 +10,7 @@
 
 <PageTitle>Set up · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.h4" Class="page-title">Let's set up ChessCoach</MudText>
+<MudText Typo="Typo.h4" HtmlTag="h1" Class="page-title">Let's set up ChessCoach</MudText>
 <div class="page-subtitle">Three short steps. You only do this once.</div>
 
 @if (_status is null)
@@ -22,7 +22,7 @@ else
     <div class="section-gap">
         <MudPaper Class="pa-6">
             <div class="eyebrow mb-2">Step 1 of 3</div>
-            <MudText Typo="Typo.h6" Class="mb-1">Your chess.com username</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-1">Your chess.com username</MudText>
             <MudText Typo="Typo.body2" Class="mb-4">ChessCoach reads your games from chess.com using this name.</MudText>
             @if (_status.UsernameChosen)
             {
@@ -44,7 +44,7 @@ else
 
         <MudPaper Class="pa-6">
             <div class="eyebrow mb-2">Step 2 of 3</div>
-            <MudText Typo="Typo.h6" Class="mb-1">Download the chess engines</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-1">Download the chess engines</MudText>
             <MudText Typo="Typo.body2" Class="mb-4">
                 The engines score your moves and play the human-like opponent. They are about 100 MB in total and are checked against
                 a fixed fingerprint after download.
@@ -84,7 +84,7 @@ else
 
         <MudPaper Class="pa-6">
             <div class="eyebrow mb-2">Step 3 of 3</div>
-            <MudText Typo="Typo.h6" Class="mb-1">Import your games</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-1">Import your games</MudText>
             <MudText Typo="Typo.body2" Class="mb-4">
                 This downloads every rapid game you have played on chess.com and analyses it. A few thousand games can take several hours.
                 You can close ChessCoach at any time: the next import carries on where this one stopped.
@@ -112,7 +112,7 @@ else
         @if (_status.Complete)
         {
             <MudPaper Class="pa-6">
-                <MudText Typo="Typo.h6" Class="mb-2">You're all set</MudText>
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">You're all set</MudText>
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoHome">Open ChessCoach</MudButton>
             </MudPaper>
         }

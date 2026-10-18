@@ -480,3 +480,13 @@ html, body {
 .app-user { display: flex; align-items: center; gap: 6px; }
 .time-select { padding: 4px 10px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: 999px; background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: inherit; font-size: 0.9rem; cursor: pointer; }
 .time-select:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: 2px; }
+
+/* The router moves focus to the page heading after each navigation (for screen readers); it needs no outline of its own. */
+h1:focus { outline: none; }
+
+/* A narrow window: the header wraps instead of pushing the page sideways. */
+@media (max-width: 860px) {
+    .app-header { flex-wrap: wrap; height: auto; min-height: 72px; padding-top: 8px; padding-bottom: 8px; row-gap: 8px; }
+    .app-nav { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }
+    .app-right { flex-wrap: wrap; }
+}
