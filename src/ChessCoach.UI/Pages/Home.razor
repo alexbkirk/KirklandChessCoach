@@ -1,5 +1,7 @@
 @page "/"
 @inject IGameRepository Games
+@inject ISetupService SetupFlow
+@inject NavigationManager Navigation
 
 <PageTitle>Home · ChessCoach</PageTitle>
 
@@ -69,6 +71,12 @@ else
     {
         try
         {
+            if (!(await SetupFlow.GetStatusAsync()).Complete)
+            {
+                Navigation.NavigateTo("setup");
+                return;
+            }
+
             _summary = await Task.Run(() => Games.GetSummaryAsync());
         }
         catch (Exception ex)

@@ -1,18 +1,16 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
+using ChessCoach.Core.Abstractions;
 using ChessCoach.Core.Setup;
 using Microsoft.Extensions.Options;
 
 namespace ChessCoach.Infrastructure.Setup;
 
-/// <summary>Progress of one engine download: the stage, and bytes so far out of the expected total.</summary>
-public sealed record EngineProgress(string Engine, string Stage, long Done, long Total);
-
 /// <summary>
 /// Downloads an engine, checks its size and SHA-256 against <see cref="EngineComponent"/>, and puts its file in the data
 /// folder. A download that fails a check is deleted and never reaches the engine folder.
 /// </summary>
-public sealed class EngineInstaller(HttpClient http, IOptions<ChessCoachOptions> options)
+public sealed class EngineInstaller(HttpClient http, IOptions<ChessCoachOptions> options) : IEngineInstaller
 {
     private const int BufferSize = 81920;
 

@@ -34,7 +34,9 @@ public static class DependencyInjection
         services.AddSingleton<IStatsRepository, StatsRepository>();
         services.AddSingleton<StatsService>();
         services.AddSingleton<IAppSettingsStore, AppSettingsStore>();
-        services.AddSingleton(sp => new EngineInstaller(new HttpClient { Timeout = TimeSpan.FromMinutes(30) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
+        services.AddSingleton<IEngineInstaller>(sp => new EngineInstaller(new HttpClient { Timeout = TimeSpan.FromMinutes(30) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
+        services.AddSingleton<ISetupService, SetupService>();
+        services.AddSingleton<IImportRunner, ImportRunner>();
         services.AddSingleton<ThemeSettingsService>();
         services.AddSingleton<IOpponentRepository, OpponentRepository>();
         services.AddSingleton<OpponentService>();
