@@ -63,6 +63,29 @@ public sealed class BlundersTests
     }
 
     [Fact]
+    public void The_clock_rate_measures_blunders_against_moves_under_the_same_filters()
+    {
+        var games = new[] { Game("1") };
+        var moves = new[]
+        {
+            Move("1", 1, blunder: true, clock: 5),
+            Move("1", 3, clock: 6),
+            Move("1", 5, blunder: true, evalBefore: -400, clock: 7),   // lost position
+            Move("1", 7, evalBefore: -400, clock: 8),                  // lost position
+            Move("1", 9, clock: 200),
+        };
+
+        var balanced = BlundersCalculator.Compute(games, moves, new BlunderOptions());
+        Assert.Equal(new BlunderBucket("10s or less", 1, 2), balanced.ByClock[0]);
+
+        var all = BlundersCalculator.Compute(games, moves, Everything);
+        Assert.Equal(new BlunderBucket("10s or less", 2, 4), all.ByClock[0]);
+
+        var low = BlundersCalculator.Compute(games, moves, new BlunderOptions(Pressure: TimePressure.Low));
+        Assert.Equal(0, low.ByClock[3].Base + low.ByClock[4].Base + low.ByClock[5].Base);
+    }
+
+    [Fact]
     public void Clock_edges_belong_to_the_lower_bucket()
     {
         var games = new[] { Game("1") };

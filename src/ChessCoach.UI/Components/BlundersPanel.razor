@@ -91,6 +91,7 @@ else
     private bool _balancedOnly = true;
     private string? _loadedColor;
     private bool _loaded;
+    private int _requests;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -112,17 +113,21 @@ else
 
     private async Task LoadAsync()
     {
+        // each load takes its own ticket: a response that is no longer the newest request is dropped
+        var ticket = ++_requests;
+        var options = new BlunderOptions(ColorFilter, _balancedOnly, _pressure);
         try
         {
-            var options = new BlunderOptions(ColorFilter, _balancedOnly, _pressure);
-            _blunders = await Task.Run(() => StatsService.GetBlundersAsync(options));
+            var result = await Task.Run(() => StatsService.GetBlundersAsync(options));
+            if (ticket != _requests) return;
+            _blunders = result;
             _loaded = true;
-            _loadedColor = ColorFilter;
+            _loadedColor = options.Color;
             _error = null;
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            if (ticket == _requests) _error = ex.Message;
         }
     }
 

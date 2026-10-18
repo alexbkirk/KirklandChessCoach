@@ -66,7 +66,7 @@ public static class BlundersCalculator
         int BlundersIn(StatsGame g) => perGame.GetValueOrDefault(g.Id);
         double Loss(StatsGame g) => movesByGame[g.Id].Average(m => m.CpLoss);
 
-        var clock = ClockBuckets(mine, counted);
+        var clock = ClockBuckets(mine.Where(m => Eligible(m, options)), counted);
 
         return new Blunders(
             Summary: Summarise(analysed, counted.Count, BlundersIn, Loss),
@@ -87,9 +87,9 @@ public static class BlundersCalculator
                 .ToList());
     }
 
-    private static bool Counts(MoveSample move, BlunderOptions options) =>
-        move.IsBlunder
-        && (!options.BalancedOnly || move.Balanced)
+    /// <summary>Whether the move passes the filters. Blunder counts and the moves they are measured against both use this.</summary>
+    private static bool Eligible(MoveSample move, BlunderOptions options) =>
+        (!options.BalancedOnly || move.Balanced)
         && options.Pressure switch
         {
             TimePressure.Low => move.Clock is <= 60,
@@ -97,18 +97,20 @@ public static class BlundersCalculator
             _ => true,
         };
 
+    private static bool Counts(MoveSample move, BlunderOptions options) => move.IsBlunder && Eligible(move, options);
+
     private static int ClockBucket(double seconds)
     {
         var index = Array.FindIndex(ClockEdges, edge => seconds <= edge);
         return index < 0 ? ClockEdges.Length : index;
     }
 
-    /// <summary>Blunders against all moves played with that much time left (every move, not only balanced ones).</summary>
-    private static List<BlunderBucket> ClockBuckets(IReadOnlyList<MoveSample> mine, IReadOnlyList<MoveSample> counted)
+    /// <summary>Blunders against the moves played with that much time left, both under the same filters.</summary>
+    private static List<BlunderBucket> ClockBuckets(IEnumerable<MoveSample> eligible, IReadOnlyList<MoveSample> counted)
     {
         var moves = new int[ClockLabels.Length];
         var blunders = new int[ClockLabels.Length];
-        foreach (var move in mine.Where(m => m.Clock is not null)) moves[ClockBucket(move.Clock!.Value)]++;
+        foreach (var move in eligible.Where(m => m.Clock is not null)) moves[ClockBucket(move.Clock!.Value)]++;
         foreach (var move in counted.Where(m => m.Clock is not null)) blunders[ClockBucket(move.Clock!.Value)]++;
         return ClockLabels.Select((label, i) => new BlunderBucket(label, blunders[i], moves[i])).ToList();
     }
