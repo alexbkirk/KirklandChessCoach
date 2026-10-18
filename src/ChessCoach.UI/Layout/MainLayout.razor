@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject ThemeState Theme
+@inject AppNavigation AppNav
 
 <MudThemeProvider Theme="_theme" IsDarkMode="Theme.Current.Dark" />
 <MudPopoverProvider />
@@ -9,9 +10,14 @@
 
 <div class="app-shell theme-@Theme.Current.Id">
     <header class="app-header">
-        <div class="app-brand">
-            <span class="app-logo" aria-hidden="true">♞</span>
-            <span class="app-name">ChessCoach</span>
+        <div class="app-left">
+            <button type="button" class="back-button" disabled="@(!AppNav.CanGoBack)" @onclick="AppNav.GoBack" aria-label="Go back to the previous page" title="Back (Alt+Left)">
+                <span aria-hidden="true">‹</span> Back
+            </button>
+            <div class="app-brand">
+                <span class="app-logo" aria-hidden="true">♞</span>
+                <span class="app-name">ChessCoach</span>
+            </div>
         </div>
         <nav class="app-nav" aria-label="Main">
             <NavLink class="nav-pill" ActiveClass="active" href="" Match="NavLinkMatch.All">Home</NavLink>
@@ -37,6 +43,7 @@
     protected override async Task OnInitializedAsync()
     {
         Theme.Changed += OnThemeChanged;
+        AppNav.Changed += OnNavigationChanged;
         await Theme.LoadAsync();
         Apply();
     }
@@ -54,5 +61,11 @@
         _theme = ThemePalettes.For(_themeId);
     }
 
-    public void Dispose() => Theme.Changed -= OnThemeChanged;
+    private void OnNavigationChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Theme.Changed -= OnThemeChanged;
+        AppNav.Changed -= OnNavigationChanged;
+    }
 }

@@ -1,13 +1,14 @@
 @page "/study"
+@inject AppNavigation Navigation
 
 <PageTitle>Study · ChessCoach</PageTitle>
 
 <MudText Typo="Typo.h4" Class="page-title">Study</MudText>
 <div class="page-subtitle">Dig into your opponents, blunders, games and habits.</div>
 
-<ColorFilterBar @bind-Value="_color" />
+<ColorFilterBar Value="@_color" ValueChanged="ColorChanged" />
 
-<MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4">
+<MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" ActivePanelIndex="_tab" ActivePanelIndexChanged="TabChanged">
     <MudTabPanel Text="Opponents">
         <OpponentsPanel ColorFilter="@_color" />
     </MudTabPanel>
@@ -23,5 +24,37 @@
 </MudTabs>
 
 @code {
+    private const int TabCount = 4;
+
+    /// <summary>The tab and colour live in the address, so going Back to this page shows the same ones.</summary>
+    [SupplyParameterFromQuery(Name = "tab")] public int? TabParameter { get; set; }
+
+    [SupplyParameterFromQuery(Name = "color")] public string? ColorParameter { get; set; }
+
+    private int _tab;
     private string? _color;
+
+    protected override void OnParametersSet()
+    {
+        _tab = Math.Clamp(TabParameter ?? 0, 0, TabCount - 1);
+        _color = ColorParameter is "white" or "black" ? ColorParameter : null;
+    }
+
+    private void TabChanged(int tab)
+    {
+        _tab = tab;
+        Remember();
+    }
+
+    private void ColorChanged(string? color)
+    {
+        _color = color;
+        Remember();
+    }
+
+    private void Remember() => Navigation.ReplaceQuery(new Dictionary<string, object?>
+    {
+        ["tab"] = _tab == 0 ? null : _tab,
+        ["color"] = _color,
+    });
 }
