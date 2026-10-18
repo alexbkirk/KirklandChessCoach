@@ -3,7 +3,7 @@
 @inject OpeningReportService Openings
 
 <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-2">
-    <MudText Typo="Typo.h6">Opening report card</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">Opening report card</MudText>
     <MudText Typo="Typo.caption">your top 3 openings per colour, each with its 8 most-played variations</MudText>
 </div>
 
@@ -21,7 +21,7 @@ else
         @foreach (var color in _report.Colors)
         {
             <div>
-                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-2">
                     <b>@(color.Color == "white" ? "White" : "Black")</b>
                     <span class="focus-muted">· your average win rate @Percent(color.WinPercent)</span>
                 </MudText>
@@ -33,7 +33,7 @@ else
                 {
                     <MudPaper Class="pa-3 mb-3" Outlined="true">
                         <div class="d-flex justify-space-between align-center mb-1">
-                            <MudText Typo="Typo.subtitle2"><a href="@OpeningLinks.Family(color.Color, family.Family)"><b>@family.Family</b></a></MudText>
+                            <MudText Typo="Typo.subtitle2" HtmlTag="h3"><a href="@OpeningLinks.Family(color.Color, family.Family)"><b>@family.Family</b></a></MudText>
                             <MudChip T="string" Size="Size.Small" Color="@VerdictColor(family.Verdict)">@family.Verdict · @family.VerdictReason</MudChip>
                         </div>
                         <MudText Typo="Typo.body2" Class="mb-2">

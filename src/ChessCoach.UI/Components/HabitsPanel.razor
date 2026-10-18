@@ -14,7 +14,7 @@ else
 {
     <div class="stats-grid">
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">How games end</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">How games end</MudText>
             <MudSimpleTable Dense="true">
                 <thead><tr><th>Ending</th><th class="text-right">Games</th><th class="text-right">You won</th><th class="text-right">You lost</th></tr></thead>
                 <tbody>
@@ -27,7 +27,7 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Win rate by game of the day</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Win rate by game of the day</MudText>
             @foreach (var row in _habits.GameOfDay)
             {
                 <Bar Row="row" />
@@ -36,7 +36,7 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Win rate by hour (UTC)</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Win rate by hour (UTC)</MudText>
             @foreach (var row in _habits.Hours)
             {
                 <Bar Row="row" />
@@ -45,7 +45,7 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Win rate by opponent rating</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Win rate by opponent rating</MudText>
             @foreach (var row in _habits.RatingGap)
             {
                 <Bar Row="row" />

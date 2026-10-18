@@ -11,11 +11,11 @@
 
 <PageTitle>Settings · ChessCoach</PageTitle>
 
-<MudText Typo="Typo.h4" Class="page-title">Settings</MudText>
+<MudText Typo="Typo.h4" HtmlTag="h1" Class="page-title">Settings</MudText>
 <div class="page-subtitle">Appearance, the AI coach and a health check of the app's data and tools.</div>
 
 <MudPaper Class="pa-6 mb-6">
-    <MudText Typo="Typo.h6">Appearance</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">Appearance</MudText>
     <MudText Typo="Typo.body2" Class="mb-4">Choose a colour theme. It is saved and used every time you open the app.</MudText>
     <div class="d-flex flex-wrap gap-4">
         @foreach (var option in Themes.All)
@@ -36,7 +36,7 @@
 </MudPaper>
 
 <MudPaper Class="pa-6 mb-6" Style="max-width:640px">
-    <MudText Typo="Typo.h6">Games to include</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">Games to include</MudText>
     <MudText Typo="Typo.body2" Class="mb-3">
         ChessCoach always imports your rapid games (10 minutes or longer). You can also include blitz and bullet. After you turn one on,
         press <b>Check for new games</b> on the Home page: the first time it searches all your past games, which can take a while.
@@ -50,14 +50,14 @@
 </MudPaper>
 
 <MudPaper Class="pa-6 mb-6" Style="max-width:640px">
-    <MudText Typo="Typo.h6">Board size</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">Board size</MudText>
     <MudText Typo="Typo.body2" Class="mb-3">How big the boards are on the puzzle, practice, opening and game review pages. You can also change it from the header while a board is on screen.</MudText>
     <MudSlider T="int" Value="View.Size" ValueChanged="View.SetSizeAsync" Min="BoardSizes.Min" Max="BoardSizes.Max" Step="BoardSizes.Step" Immediate="false" aria-label="Board size in pixels" />
     <MudText Typo="Typo.caption">@View.Size pixels across</MudText>
 </MudPaper>
 
 <MudPaper Class="pa-6 mb-6" Style="max-width:640px">
-    <MudText Typo="Typo.h6">About and updates</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">About and updates</MudText>
     <MudText Typo="Typo.body2" Class="mb-3">ChessCoach @Updates.Current. @UpdateText</MudText>
     <MudButton Variant="Variant.Outlined" Disabled="@(Updates.State is UpdateState.Checking or UpdateState.Downloading)" OnClick="() => Updates.CheckAsync()">Check for updates</MudButton>
     @if (Updates.Available is not null)
@@ -67,7 +67,7 @@
 </MudPaper>
 
 <MudPaper Class="pa-6 mb-6" Style="max-width:640px">
-    <MudText Typo="Typo.h6">AI coach</MudText>
+    <MudText Typo="Typo.h6" HtmlTag="h2">AI coach</MudText>
     <MudText Typo="Typo.body2" Class="mb-3">
         The coach uses an Anthropic API key. It is saved only on this computer, encrypted for your Windows account
         (in %LOCALAPPDATA%\ChessCoach), never in the database, the settings file or the repository.
@@ -107,7 +107,7 @@
     </div>
 </MudPaper>
 
-<MudText Typo="Typo.h6" Class="mb-2">Diagnostics</MudText>
+<MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Diagnostics</MudText>
 
 @if (_checks is null)
 {

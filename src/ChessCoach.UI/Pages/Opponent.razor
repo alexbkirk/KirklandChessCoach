@@ -7,6 +7,8 @@
 
 <MudText Typo="Typo.caption"><a href="">Home</a> · <a href="study">Study</a></MudText>
 
+<MudText Typo="Typo.h4" HtmlTag="h1" Class="mt-1">@(_report?.Name ?? (string.IsNullOrWhiteSpace(NameQuery) ? "Opponent" : NameQuery))</MudText>
+
 @if (string.IsNullOrWhiteSpace(NameQuery))
 {
     <MudAlert Severity="Severity.Warning" Class="mt-3">No opponent chosen. Open this page from Study → Opponents, or click an opponent's name on a puzzle or drill card.</MudAlert>
@@ -21,13 +23,11 @@ else if (_report is null)
 }
 else if (_report.Record.Games == 0)
 {
-    <MudText Typo="Typo.h4" Class="mt-1">@_report.Name</MudText>
     <MudAlert Severity="Severity.Info" Class="mt-3">No games against this opponent.</MudAlert>
 }
 else
 {
     var r = _report;
-    <MudText Typo="Typo.h4" Class="mt-1">@r.Name</MudText>
     <MudText Typo="Typo.body1" Class="mb-1">
         @r.Record.Games game@(r.Record.Games == 1 ? "" : "s") · @Percent(r.Record.WinPercent) wins (@r.Record.Wins W, @r.Record.Draws D, @r.Record.Losses L)
         · @r.FirstDate@(r.FirstDate == r.LastDate ? "" : $" to {r.LastDate}")
@@ -39,7 +39,7 @@ else
     </MudText>
 
     <MudPaper Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6">How the games go</MudText>
+        <MudText Typo="Typo.h6" HtmlTag="h2">How the games go</MudText>
         <MudText Typo="Typo.body2" Class="mb-2">@PunishSummary(r)</MudText>
         <MudSimpleTable Dense="true">
             <thead>
@@ -105,7 +105,7 @@ else
         </MudTabPanel>
 
         <MudTabPanel Text="Where you go wrong">
-            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Your costliest blunders against them</b></MudText>
+            <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-1"><b>Your costliest blunders against them</b></MudText>
             @if (r.YourBlunders.Count == 0)
             {
                 <MudText Typo="Typo.body2" Class="mb-4">No blunders against this opponent.</MudText>
@@ -131,12 +131,12 @@ else
                     </tbody>
                 </MudSimpleTable>
             }
-            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Your opening slips against them</b></MudText>
+            <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-1"><b>Your opening slips against them</b></MudText>
             <SlipTable Spots="@r.YourOpeningSlips" Whose="Your" Empty="None of your first 15 moves against them lost a pawn or more." />
         </MudTabPanel>
 
         <MudTabPanel Text="Where they are weak">
-            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Their blunders, and whether you punished them</b></MudText>
+            <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-1"><b>Their blunders, and whether you punished them</b></MudText>
             @if (r.TheirBlunders.Count == 0)
             {
                 <MudText Typo="Typo.body2" Class="mb-4">They have not blundered against you.</MudText>
@@ -171,14 +171,14 @@ else
                     </tbody>
                 </MudSimpleTable>
             }
-            <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Their opening slips against you</b></MudText>
+            <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-1"><b>Their opening slips against you</b></MudText>
             <SlipTable Spots="@r.TheirOpeningSlips" Whose="Their" Empty="None of their first 15 moves against you lost a pawn or more." />
         </MudTabPanel>
 
         <MudTabPanel Text="Openings and endings">
             <div class="stats-grid">
                 <div>
-                    <MudText Typo="Typo.subtitle1" Class="mb-1"><b>Openings</b></MudText>
+                    <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-1"><b>Openings</b></MudText>
                     <MudSimpleTable Dense="true">
                         <thead><tr><th>Opening</th><th>You</th><th class="text-right">Games</th><th class="text-right">Win %</th></tr></thead>
                         <tbody>
@@ -195,7 +195,7 @@ else
                     </MudSimpleTable>
                 </div>
                 <div>
-                    <MudText Typo="Typo.subtitle1" Class="mb-1"><b>How the games ended</b></MudText>
+                    <MudText Typo="Typo.subtitle1" HtmlTag="h3" Class="mb-1"><b>How the games ended</b></MudText>
                     <MudSimpleTable Dense="true">
                         <thead><tr><th>Ending</th><th class="text-right">Games</th><th class="text-right">You won</th><th class="text-right">You lost</th></tr></thead>
                         <tbody>

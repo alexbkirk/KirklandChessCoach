@@ -13,16 +13,16 @@ else if (_overview is null)
 else
 {
     <div class="kpis mb-4">
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games</MudText><MudText Typo="Typo.h5">@_overview.Total.Games.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate</MudText><MudText Typo="Typo.h5">@Percent(_overview.Total.WinPercent)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Record (W-D-L)</MudText><MudText Typo="Typo.h5">@_overview.Total.Wins-@_overview.Total.Draws-@_overview.Total.Losses</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Peak rating</MudText><MudText Typo="Typo.h5">@(_overview.PeakRating?.ToString(CultureInfo.InvariantCulture) ?? "–")</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Latest rating</MudText><MudText Typo="Typo.h5">@(_overview.LatestRating?.ToString(CultureInfo.InvariantCulture) ?? "–")</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Average length</MudText><MudText Typo="Typo.h5">@Math.Round(_overview.AverageMoves).ToString(CultureInfo.InvariantCulture) moves</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games</MudText><MudText Typo="Typo.h5" HtmlTag="p">@_overview.Total.Games.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate</MudText><MudText Typo="Typo.h5" HtmlTag="p">@Percent(_overview.Total.WinPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Record (W-D-L)</MudText><MudText Typo="Typo.h5" HtmlTag="p">@_overview.Total.Wins-@_overview.Total.Draws-@_overview.Total.Losses</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Peak rating</MudText><MudText Typo="Typo.h5" HtmlTag="p">@(_overview.PeakRating?.ToString(CultureInfo.InvariantCulture) ?? "–")</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Latest rating</MudText><MudText Typo="Typo.h5" HtmlTag="p">@(_overview.LatestRating?.ToString(CultureInfo.InvariantCulture) ?? "–")</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Average length</MudText><MudText Typo="Typo.h5" HtmlTag="p">@Math.Round(_overview.AverageMoves).ToString(CultureInfo.InvariantCulture) moves</MudText></MudPaper>
     </div>
 
     <MudPaper Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6">Rating over time</MudText>
+        <MudText Typo="Typo.h6" HtmlTag="h2">Rating over time</MudText>
         @if (_overview.Rating.Count < 2)
         {
             <MudText Typo="Typo.body2">Not enough games to draw a line yet.</MudText>
@@ -38,7 +38,7 @@ else
 
     <div class="stats-grid">
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Results by colour</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Results by colour</MudText>
             <MudSimpleTable Dense="true">
                 <thead><tr><th>Colour</th><th class="text-right">Games</th><th class="text-right">Win %</th><th>W / D / L</th></tr></thead>
                 <tbody>
@@ -50,7 +50,7 @@ else
             </MudSimpleTable>
         </MudPaper>
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Results by time control</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Results by time control</MudText>
             <MudSimpleTable Dense="true">
                 <thead><tr><th>Time control</th><th class="text-right">Games</th><th class="text-right">Win %</th><th>W / D / L</th></tr></thead>
                 <tbody>

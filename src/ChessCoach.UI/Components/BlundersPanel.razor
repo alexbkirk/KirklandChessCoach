@@ -24,17 +24,17 @@ else
 {
     var s = _blunders.Summary;
     <div class="kpis mb-4">
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Blunders</MudText><MudText Typo="Typo.h5">@s.Blunders.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Per game</MudText><MudText Typo="Typo.h5">@s.PerGame.ToString("0.00", CultureInfo.InvariantCulture)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Avg centipawn loss</MudText><MudText Typo="Typo.h5">@s.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games with 1+ blunder</MudText><MudText Typo="Typo.h5">@Percent(s.GamesWithBlunderPercent)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate, 0 blunders</MudText><MudText Typo="Typo.h5">@Percent(s.ZeroBlunderWinPercent)</MudText></MudPaper>
-        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate, 3+ blunders</MudText><MudText Typo="Typo.h5">@Percent(s.ThreePlusBlunderWinPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Blunders</MudText><MudText Typo="Typo.h5" HtmlTag="p">@s.Blunders.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Per game</MudText><MudText Typo="Typo.h5" HtmlTag="p">@s.PerGame.ToString("0.00", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Avg centipawn loss</MudText><MudText Typo="Typo.h5" HtmlTag="p">@s.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games with 1+ blunder</MudText><MudText Typo="Typo.h5" HtmlTag="p">@Percent(s.GamesWithBlunderPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate, 0 blunders</MudText><MudText Typo="Typo.h5" HtmlTag="p">@Percent(s.ZeroBlunderWinPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate, 3+ blunders</MudText><MudText Typo="Typo.h5" HtmlTag="p">@Percent(s.ThreePlusBlunderWinPercent)</MudText></MudPaper>
     </div>
 
     <div class="stats-grid">
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Blunder rate by time left</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Blunder rate by time left</MudText>
             @{ var clockMax = _blunders.ByClock.Max(b => b.Rate); }
             @foreach (var bucket in _blunders.ByClock)
             {
@@ -44,7 +44,7 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">Blunders per game by move number</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Blunders per game by move number</MudText>
             @{ var moveMax = _blunders.ByMoveNumber.Max(b => b.Rate); }
             @foreach (var bucket in _blunders.ByMoveNumber)
             {
@@ -54,7 +54,7 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">By time control</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">By time control</MudText>
             <MudSimpleTable Dense="true">
                 <thead><tr><th>Time control</th><th class="text-right">Games</th><th class="text-right">Blunders / game</th><th class="text-right">Avg loss (cp)</th></tr></thead>
                 <tbody>
@@ -67,7 +67,7 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-2">By opening</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">By opening</MudText>
             <MudSimpleTable Dense="true">
                 <thead><tr><th>Opening</th><th class="text-right">Games</th><th class="text-right">Blunders / game</th><th class="text-right">Avg loss (cp)</th></tr></thead>
                 <tbody>
