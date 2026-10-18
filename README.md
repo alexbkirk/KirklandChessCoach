@@ -36,7 +36,7 @@ dotnet run --project src\ChessCoach.Desktop
 Build the installer (it downloads Python, bundles the analysis and compiles `dist\ChessCoach-Setup.exe`; needs Inno Setup 6, `winget install JRSoftware.InnoSetup`):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File toolsuild-installer.ps1
+powershell -ExecutionPolicy Bypass -File tools\build-installer.ps1
 ```
 
 Or a self-contained copy without the installer:
