@@ -58,8 +58,12 @@ public partial class App : Application
         // when the app is published outside the repository.
         builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
 
-        var dataDirectory = builder.Configuration[$"{ChessCoachOptions.SectionName}:{nameof(ChessCoachOptions.DataDirectory)}"]
-            ?? throw new InvalidOperationException("ChessCoach:DataDirectory is not set in appsettings.json.");
+        var dataDirectory = builder.Configuration[$"{ChessCoachOptions.SectionName}:{nameof(ChessCoachOptions.DataDirectory)}"];
+        if (string.IsNullOrWhiteSpace(dataDirectory))
+        {
+            dataDirectory = ChessCoachOptions.DefaultDataDirectory;
+        }
+
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.File(Path.Combine(dataDirectory, "logs", "chesscoach-.log"), formatProvider: CultureInfo.InvariantCulture, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 14)
@@ -67,7 +71,11 @@ public partial class App : Application
         builder.Services.AddSerilog();
 
         builder.Services.AddChessCoachInfrastructure(builder.Configuration);
-        builder.Services.PostConfigure<ChessCoachOptions>(o => o.AnalysisDirectory ??= FindAnalysisDirectory());
+        builder.Services.PostConfigure<ChessCoachOptions>(o =>
+        {
+            o.AnalysisDirectory ??= FindAnalysisDirectory();
+            o.PythonPath ??= ChessCoachOptions.FindPython(AppContext.BaseDirectory, o.AnalysisDirectory);
+        });
         builder.Services.AddWpfBlazorWebView();
         builder.Services.AddMudServices();
         builder.Services.AddScoped<ChessCoach.UI.ChessRules>();
