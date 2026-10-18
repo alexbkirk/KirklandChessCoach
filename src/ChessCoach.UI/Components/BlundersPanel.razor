@@ -1,0 +1,139 @@
+@using System.Globalization
+@using ChessCoach.Core.Stats
+@inject StatsService StatsService
+
+<div class="d-flex flex-wrap align-center gap-4 mb-4">
+    <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
+        <MudButton OnClick="() => SetPressure(TimePressure.All)" Color="@PressureColor(TimePressure.All)">Any clock</MudButton>
+        <MudButton OnClick="() => SetPressure(TimePressure.Low)" Color="@PressureColor(TimePressure.Low)">Minute or less left</MudButton>
+        <MudButton OnClick="() => SetPressure(TimePressure.Normal)" Color="@PressureColor(TimePressure.Normal)">More than a minute</MudButton>
+    </MudButtonGroup>
+    <MudCheckBox T="bool" Value="_balancedOnly" ValueChanged="SetBalancedAsync" Label="Only balanced positions" Dense="true" />
+</div>
+<MudText Typo="Typo.caption" Class="mb-4 d-block">A blunder is a move that loses 200 or more centipawns, found by Stockfish at depth 12. "Balanced" leaves out moves made when you were already more than a pawn down.</MudText>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_blunders is null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    var s = _blunders.Summary;
+    <div class="kpis mb-4">
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Blunders</MudText><MudText Typo="Typo.h5">@s.Blunders.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Per game</MudText><MudText Typo="Typo.h5">@s.PerGame.ToString("0.00", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Avg centipawn loss</MudText><MudText Typo="Typo.h5">@s.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games with 1+ blunder</MudText><MudText Typo="Typo.h5">@Percent(s.GamesWithBlunderPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate, 0 blunders</MudText><MudText Typo="Typo.h5">@Percent(s.ZeroBlunderWinPercent)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Win rate, 3+ blunders</MudText><MudText Typo="Typo.h5">@Percent(s.ThreePlusBlunderWinPercent)</MudText></MudPaper>
+    </div>
+
+    <div class="stats-grid">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Blunder rate by time left</MudText>
+            @{ var clockMax = _blunders.ByClock.Max(b => b.Rate); }
+            @foreach (var bucket in _blunders.ByClock)
+            {
+                <RateBar Label="@bucket.Label" Fraction="@Relative(bucket.Rate, clockMax)" Text="@($"{Percent(bucket.Rate * 100)} · {bucket.Base:N0} moves")" Faded="@(bucket.Base < 30)" />
+            }
+            <MudText Typo="Typo.caption">Share of your moves that were blunders, by the clock after the move. With a minute or less left: @Percent(_blunders.LowTime.Rate * 100) (@_blunders.LowTime.Blunders of @_blunders.LowTime.Base.ToString("N0", CultureInfo.InvariantCulture)). With more: @Percent(_blunders.EnoughTime.Rate * 100) (@_blunders.EnoughTime.Blunders of @_blunders.EnoughTime.Base.ToString("N0", CultureInfo.InvariantCulture)).</MudText>
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Blunders per game by move number</MudText>
+            @{ var moveMax = _blunders.ByMoveNumber.Max(b => b.Rate); }
+            @foreach (var bucket in _blunders.ByMoveNumber)
+            {
+                <RateBar Label="@bucket.Label" Fraction="@Relative(bucket.Rate, moveMax)" Text="@($"{bucket.Rate:0.00} · {bucket.Base:N0} games")" Faded="@(bucket.Base < 30)" />
+            }
+            <MudText Typo="Typo.caption">Blunders in that stretch of the game, divided by the games that reached it.</MudText>
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">By time control</MudText>
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Time control</th><th class="text-right">Games</th><th class="text-right">Blunders / game</th><th class="text-right">Avg loss (cp)</th></tr></thead>
+                <tbody>
+                    @foreach (var group in _blunders.ByTimeControl)
+                    {
+                        <tr><td>@group.Label</td><td class="text-right">@group.Games</td><td class="text-right">@group.BlundersPerGame.ToString("0.00", CultureInfo.InvariantCulture)</td><td class="text-right">@group.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">By opening</MudText>
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Opening</th><th class="text-right">Games</th><th class="text-right">Blunders / game</th><th class="text-right">Avg loss (cp)</th></tr></thead>
+                <tbody>
+                    @foreach (var group in _blunders.ByOpening)
+                    {
+                        <tr><td>@group.Label</td><td class="text-right">@group.Games</td><td class="text-right">@group.BlundersPerGame.ToString("0.00", CultureInfo.InvariantCulture)</td><td class="text-right">@group.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+            <MudText Typo="Typo.caption">Openings with at least @BlundersCalculator.DefaultMinGames games.</MudText>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    [Parameter] public string? ColorFilter { get; set; }
+
+    private Blunders? _blunders;
+    private string? _error;
+    private TimePressure _pressure = TimePressure.All;
+    private bool _balancedOnly = true;
+    private string? _loadedColor;
+    private bool _loaded;
+    private int _requests;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loaded && _loadedColor == ColorFilter) return;
+        await LoadAsync();
+    }
+
+    private async Task SetPressure(TimePressure pressure)
+    {
+        _pressure = pressure;
+        await LoadAsync();
+    }
+
+    private async Task SetBalancedAsync(bool value)
+    {
+        _balancedOnly = value;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        // each load takes its own ticket: a response that is no longer the newest request is dropped
+        var ticket = ++_requests;
+        var options = new BlunderOptions(ColorFilter, _balancedOnly, _pressure);
+        try
+        {
+            var result = await Task.Run(() => StatsService.GetBlundersAsync(options));
+            if (ticket != _requests) return;
+            _blunders = result;
+            _loaded = true;
+            _loadedColor = options.Color;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            if (ticket == _requests) _error = ex.Message;
+        }
+    }
+
+    private Color PressureColor(TimePressure pressure) => _pressure == pressure ? Color.Primary : Color.Default;
+
+    private static double Relative(double value, double max) => max <= 0 ? 0 : value / max;
+
+    private static string Percent(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+}

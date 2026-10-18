@@ -424,3 +424,4 @@ html, body {
 .habit-track { display: block; height: 0.6rem; background: var(--mud-palette-background-gray); border-radius: 4px; overflow: hidden; }
 .habit-fill { display: block; height: 100%; background: var(--mud-palette-primary); }
 .habit-value { text-align: right; font-variant-numeric: tabular-nums; }
+.habit-bar.wide { grid-template-columns: 7rem 1fr 11rem; }

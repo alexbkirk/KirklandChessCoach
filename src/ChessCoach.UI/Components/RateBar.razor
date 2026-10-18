@@ -1,0 +1,18 @@
+<div class="habit-bar wide @(Faded ? "faded" : "")">
+    <span class="habit-label">@Label</span>
+    <span class="habit-track"><span class="habit-fill" style="width:@Width%"></span></span>
+    <span class="habit-value">@Text</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    /// <summary>Length of the bar from 0 to 1.</summary>
+    [Parameter] public double Fraction { get; set; }
+
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    [Parameter] public bool Faded { get; set; }
+
+    private string Width => (Math.Clamp(Fraction, 0, 1) * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+}

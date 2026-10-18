@@ -11,6 +11,13 @@ public sealed class StatsService(IStatsRepository repository)
         return OverviewCalculator.Compute(games, color);
     }
 
+    public async Task<Blunders> GetBlundersAsync(BlunderOptions options, int minGames = BlundersCalculator.DefaultMinGames, CancellationToken cancellationToken = default)
+    {
+        var games = await repository.LoadGamesAsync(cancellationToken);
+        var moves = await repository.LoadMoveSamplesAsync(cancellationToken);
+        return BlundersCalculator.Compute(games, moves, options, minGames);
+    }
+
     public async Task<Habits> GetHabitsAsync(string? color = null, CancellationToken cancellationToken = default)
     {
         var games = await repository.LoadGamesAsync(cancellationToken);
