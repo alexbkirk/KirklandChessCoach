@@ -37,6 +37,45 @@ public sealed class StatsRepository(SqliteConnectionFactory connections) : IStat
             Opponent: r.Opponent ?? "")).ToList();
     }
 
+    public async Task<IReadOnlyList<MoveSample>> LoadMoveSamplesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<MoveRow>(new CommandDefinition(
+            """
+            SELECT CAST(game_id AS TEXT) AS GameId, ply AS Ply, CAST(color AS TEXT) AS Color,
+                   eval_before AS EvalBefore, cp_loss AS CpLoss, CAST(class AS TEXT) AS Class, clk AS Clock
+            FROM moves
+            WHERE is_mine = 1 AND is_last = 0
+            """,
+            cancellationToken: cancellationToken));
+
+        return rows.Select(r => new MoveSample(
+            GameId: r.GameId,
+            Ply: r.Ply,
+            Color: r.Color ?? "",
+            EvalBefore: r.EvalBefore,
+            CpLoss: r.CpLoss,
+            IsBlunder: r.Class == "blunder",
+            Clock: r.Clock)).ToList();
+    }
+
+    private sealed class MoveRow
+    {
+        public string GameId { get; set; } = "";
+
+        public int Ply { get; set; }
+
+        public string? Color { get; set; }
+
+        public int EvalBefore { get; set; }
+
+        public int CpLoss { get; set; }
+
+        public string? Class { get; set; }
+
+        public double? Clock { get; set; }
+    }
+
     private sealed class Row
     {
         public string Id { get; set; } = "";
