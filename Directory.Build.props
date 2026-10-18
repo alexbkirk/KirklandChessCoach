@@ -7,5 +7,7 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Deterministic>true</Deterministic>
     <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- The one place the app version lives: the app, the installer and the release tag all follow it. -->
+    <Version>1.0.0</Version>
   </PropertyGroup>
 </Project>

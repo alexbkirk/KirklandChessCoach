@@ -3,10 +3,12 @@ using ChessCoach.Core.Settings;
 using ChessCoach.Core.Setup;
 using ChessCoach.Core.Stats;
 using ChessCoach.Core.Training;
+using ChessCoach.Core.Updates;
 using ChessCoach.Infrastructure.Data;
 using ChessCoach.Infrastructure.Diagnostics;
 using ChessCoach.Infrastructure.Secrets;
 using ChessCoach.Infrastructure.Setup;
+using ChessCoach.Infrastructure.Updates;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +42,10 @@ public static class DependencyInjection
         services.AddSingleton<IImportRunner, ImportRunner>();
         services.AddSingleton<ImportCoordinator>();
         services.AddSingleton<ThemeSettingsService>();
+        services.AddSingleton<IUpdateSource>(sp => new GitHubUpdateSource(new HttpClient { Timeout = TimeSpan.FromSeconds(15) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
+        services.AddSingleton<IUpdateInstaller>(sp => new UpdateInstaller(new HttpClient { Timeout = TimeSpan.FromMinutes(15) }, sp.GetRequiredService<IOptions<ChessCoachOptions>>()));
+        // The host registers IAppLifecycle: only it knows how to close the app.
+        services.AddSingleton(sp => new UpdateService(AppVersion.Current, sp.GetRequiredService<IUpdateSource>(), sp.GetRequiredService<IUpdateInstaller>(), sp.GetRequiredService<IAppLifecycle>()));
         services.AddSingleton<IOpponentRepository, OpponentRepository>();
         services.AddSingleton<OpponentService>();
         // Windows only: the desktop host is Windows-only, and the Settings page needs this service.

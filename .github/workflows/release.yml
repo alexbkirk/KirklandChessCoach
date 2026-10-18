@@ -1,0 +1,52 @@
+name: Release
+
+# Publishing a release: set <Version> in Directory.Build.props, merge it, then push a tag that matches, e.g.
+#   git tag v1.1.0
+#   git push origin v1.1.0
+# This builds ChessCoach-Setup.exe and attaches it, with its SHA-256, to a GitHub release. The app finds it from there.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check the tag matches the app version
+        shell: pwsh
+        run: |
+          $props = Get-Content Directory.Build.props -Raw
+          if ($props -notmatch '<Version>(\d+\.\d+\.\d+)</Version>') { throw 'Directory.Build.props has no <Version>.' }
+          $tag = '${{ github.ref_name }}'
+          if ($tag -ne "v$($Matches[1])") { throw "Tag $tag does not match Directory.Build.props version $($Matches[1])." }
+
+      - name: Run the tests
+        run: dotnet test ChessCoach.sln -c Release
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer
+        shell: pwsh
+        run: ./tools/build-installer.ps1
+
+      - name: Write the checksum
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/ChessCoach-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ChessCoach-Setup.exe" | Set-Content -Path dist/ChessCoach-Setup.exe.sha256 -Encoding ascii
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create '${{ github.ref_name }}' dist/ChessCoach-Setup.exe dist/ChessCoach-Setup.exe.sha256 --title '${{ github.ref_name }}' --generate-notes

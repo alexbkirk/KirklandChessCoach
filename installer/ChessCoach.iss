@@ -1,7 +1,10 @@
 ; ChessCoach installer. Built by tools\build-installer.ps1 (which fills ..\build\app first).
 
 #define MyAppName "ChessCoach"
+; toolsuild-installer.ps1 passes /DMyAppVersion=<Version from Directory.Build.props>; this is only the fallback.
+#ifndef MyAppVersion
 #define MyAppVersion "1.0.0"
+#endif
 #define MyAppExe "ChessCoach.exe"
 
 [Setup]

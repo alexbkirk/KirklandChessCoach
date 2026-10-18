@@ -425,3 +425,5 @@ html, body {
 .habit-fill { display: block; height: 100%; background: var(--mud-palette-primary); }
 .habit-value { text-align: right; font-variant-numeric: tabular-nums; }
 .habit-bar.wide { grid-template-columns: 7rem 1fr 11rem; }
+.update-banner { max-width: 1200px; margin: 0.75rem auto 0; padding: 0 1.5rem; }
+.update-notes { white-space: pre-wrap; margin-top: 0.5rem; font-size: 0.9rem; max-height: 12rem; overflow: auto; }

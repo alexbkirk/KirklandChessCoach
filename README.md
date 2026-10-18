@@ -19,6 +19,10 @@ To bring in games you have played since, press **Check for new games** at the to
 
 Your games and settings are kept in `%LOCALAPPDATA%\ChessCoach`. Uninstalling the app does not delete them.
 
+### Updating
+
+ChessCoach looks for a newer release when it opens. When one exists, a bar at the top of the window says so: press **Update**. The app downloads the installer, checks it against the release's SHA-256, closes itself and opens the installer. Your games and settings are kept. **Settings > About and updates** shows your version and has a **Check for updates** button.
+
 ### If something goes wrong
 
 - **The setup page says the download did not finish.** Check your internet connection and press the button again.
@@ -46,6 +50,14 @@ Or a self-contained copy without the installer:
 ```powershell
 dotnet publish src\ChessCoach.Desktop -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o C:\Users\you\ChessCoach-app
 ```
+
+Publishing a release (the app finds it from its update check):
+
+1. Set `<Version>` in `Directory.Build.props` (for example `1.1.0`) and merge that change.
+2. Push a matching tag: `git tag v1.1.0` then `git push origin v1.1.0`.
+3. The **Release** workflow (`.github/workflows/release.yml`) runs the tests, builds `ChessCoach-Setup.exe`, and attaches it and its `.sha256` file to a GitHub release. It stops if the tag and `<Version>` differ.
+
+The app reads the latest release of the repository in `ChessCoach:UpdateRepository`, which must be public for installed copies to see it.
 
 The app migrates the database on startup (`src\ChessCoach.Infrastructure\Data\Migrations`) and switches it to WAL mode.
 

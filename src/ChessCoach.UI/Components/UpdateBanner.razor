@@ -1,0 +1,65 @@
+@using ChessCoach.Core.Updates
+@implements IDisposable
+@inject UpdateService Updates
+
+@if (Updates.Available is { } update)
+{
+    <div class="update-banner">
+        <MudAlert Severity="@(Updates.State == UpdateState.Failed ? Severity.Error : Severity.Info)" Dense="true" Elevation="0">
+            <div class="d-flex flex-wrap align-center gap-3">
+                <span>
+                    <b>ChessCoach @update.Version is available.</b> You have @Updates.Current.
+                    @if (Updates.State == UpdateState.Downloading)
+                    {
+                        <span>Downloading the update, then ChessCoach will close and the installer will open…</span>
+                    }
+                    else
+                    {
+                        <span>Updating closes ChessCoach and opens the installer. Your games and settings are kept.</span>
+                    }
+                </span>
+                @if (Updates.State == UpdateState.Downloading)
+                {
+                    <MudProgressLinear Value="@(Updates.Progress * 100)" Color="Color.Primary" Style="max-width:220px" />
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="UpdateAsync">@(Updates.State == UpdateState.Failed ? "Try again" : "Update")</MudButton>
+                    @if (!string.IsNullOrWhiteSpace(update.Notes))
+                    {
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="() => _showNotes = !_showNotes">@(_showNotes ? "Hide what's new" : "What's new")</MudButton>
+                    }
+                }
+            </div>
+            @if (Updates.State == UpdateState.Failed && Updates.Error is not null)
+            {
+                <div>@Updates.Error</div>
+            }
+            @if (_showNotes)
+            {
+                <div class="update-notes">@update.Notes</div>
+            }
+        </MudAlert>
+    </div>
+}
+
+@code {
+    private bool _showNotes;
+
+    protected override void OnInitialized() => Updates.Changed += OnChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // one check when the app opens; Settings has a button for another
+        if (firstRender && Updates.State == UpdateState.Idle)
+        {
+            await Updates.CheckAsync();
+        }
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private Task UpdateAsync() => Updates.UpdateAsync();
+
+    public void Dispose() => Updates.Changed -= OnChanged;
+}

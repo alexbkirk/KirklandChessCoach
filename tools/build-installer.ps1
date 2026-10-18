@@ -10,6 +10,12 @@ $python = Join-Path $app 'python'
 $analysisOut = Join-Path $app 'analysis'
 $dist = Join-Path $root 'dist'
 
+# The app version lives in one place: Directory.Build.props. The installer and the release tag follow it.
+$props = Get-Content (Join-Path $root 'Directory.Build.props') -Raw
+if ($props -notmatch '<Version>(\d+\.\d+\.\d+)</Version>') { throw 'Directory.Build.props has no <Version>major.minor.patch</Version>.' }
+$version = $Matches[1]
+Write-Host "Building ChessCoach $version"
+
 # Pinned: the embeddable Python from python.org and its SHA-256.
 $pyUrl = 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip'
 $pySha256 = '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3'
@@ -79,7 +85,7 @@ $iscc = Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'
 if (-not (Test-Path $iscc)) { $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' }
 if (-not (Test-Path $iscc)) { throw 'Inno Setup 6 was not found. Install it with: winget install JRSoftware.InnoSetup' }
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
-& $iscc (Join-Path $root 'installer\ChessCoach.iss')
+& $iscc "/DMyAppVersion=$version" (Join-Path $root 'installer\ChessCoach.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Building the installer failed.' }
 
 Write-Host ''
