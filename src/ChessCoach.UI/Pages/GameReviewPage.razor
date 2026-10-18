@@ -1,0 +1,451 @@
+@page "/review/{Id}"
+@using System.Globalization
+@using ChessCoach.Core.Review
+@using ChessCoach.Core.Stats
+@using Microsoft.AspNetCore.Components.Web
+@implements IAsyncDisposable
+@inject GameReviewService Reviews
+@inject ChessRules Rules
+
+<PageTitle>@(_review is null ? "Game review" : $"vs {_review.Game.Opponent}") · ChessCoach</PageTitle>
+
+<MudText Typo="Typo.caption"><a href="">Home</a> · <a href="stats">Stats</a></MudText>
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-3">@_error</MudAlert>
+}
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-3" />
+}
+else if (_review is null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mt-3">That game was not found. Open it from the Games tab in Stats.</MudAlert>
+}
+else
+{
+    var game = _review.Game;
+    <MudText Typo="Typo.h4" Class="mt-1">vs @game.Opponent</MudText>
+    <MudText Typo="Typo.body1" Class="mb-3">
+        @game.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) · @TimeControlLabel.From(game.TimeControl) · you played @game.Color · @game.MyRating – @game.OppRating
+        · <MudChip T="string" Size="Size.Small" Color="@ResultColor(game.Result)">@game.Result</MudChip> @game.Ending
+        @if (!string.IsNullOrEmpty(game.Opening))
+        {
+            <span> · @game.Opening</span>
+        }
+        @if (!string.IsNullOrEmpty(game.Url))
+        {
+            <span> · <a href="@game.Url" target="_blank" rel="noopener">view on chess.com</a></span>
+        }
+    </MudText>
+
+    @if (_finalPositionMissing)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4">The position after the last move could not be worked out, so the board shows the position before it.</MudAlert>
+    }
+
+    @if (_review.Moves.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">This game has not been analysed yet, so there are no moves to review. You can still keep a note on the game.</MudAlert>
+    }
+    else
+    {
+        <div class="kpis mb-4">
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your inaccuracies</MudText><MudText Typo="Typo.h5">@_summary.Inaccuracies</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your mistakes</MudText><MudText Typo="Typo.h5">@_summary.Mistakes</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Your blunders</MudText><MudText Typo="Typo.h5">@_summary.Blunders</MudText></MudPaper>
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Avg centipawn loss</MudText><MudText Typo="Typo.h5">@_summary.AverageLoss.ToString("0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        </div>
+
+        <div class="puzzle-layout">
+            <div class="puzzle-board review-board" tabindex="0" @onkeydown="OnKeyDown">
+                <ChessBoard Fen="@CurrentFen" Orientation="@game.Color" LastMove="@LastUci" Marks="@BoardMarks" />
+
+                <div class="review-controls mt-2">
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(_position == 0)" OnClick="() => GoToAsync(0)" aria-label="Start of the game">|&lt;</MudButton>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(_position == 0)" OnClick="() => GoToAsync(_position - 1)" aria-label="Previous move">&lt;</MudButton>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(_position == _review.Moves.Count)" OnClick="() => GoToAsync(_position + 1)" aria-label="Next move">&gt;</MudButton>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="@(_position == _review.Moves.Count)" OnClick="() => GoToAsync(_review.Moves.Count)" aria-label="End of the game">&gt;|</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" Disabled="@(_previousKey is null)" OnClick="() => GoToAsync(_previousKey!.Value)">Previous mistake</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" Disabled="@(_nextKey is null)" OnClick="() => GoToAsync(_nextKey!.Value)">Next mistake</MudButton>
+                </div>
+                <MudCheckBox T="bool" @bind-Value="_showBest" Label="Show the engine's best move here" Dense="true" />
+                <MudText Typo="Typo.caption">Click the board, then use the left and right arrow keys to step through the game.</MudText>
+
+                <svg class="review-graph mt-2" viewBox="0 0 1000 120" preserveAspectRatio="none" role="img" aria-label="How the game swung: White's winning chances after each move">
+                    <path d="@AreaPath" fill="var(--mud-palette-primary)" fill-opacity="0.25" />
+                    <line x1="0" y1="60" x2="1000" y2="60" stroke="var(--mud-palette-lines-default)" stroke-width="1" vector-effect="non-scaling-stroke" />
+                    <polyline points="@LinePoints" fill="none" stroke="var(--mud-palette-primary)" stroke-width="2" vector-effect="non-scaling-stroke" />
+                    @foreach (var key in _keyMoves)
+                    {
+                        <line x1="@Num(X(key))" y1="@Num(Y(key))" x2="@Num(X(key))" y2="@Num(Y(key) + 0.01)" stroke="var(--mud-palette-error)" stroke-width="9" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+                    }
+                    <line x1="@X(_position)" y1="0" x2="@X(_position)" y2="120" stroke="var(--mud-palette-text-primary)" stroke-width="2" vector-effect="non-scaling-stroke" />
+                    @for (var i = 0; i < _chances.Count; i++)
+                    {
+                        var position = i;
+                        <rect x="@((X(position) - Step / 2).ToString("0.##", CultureInfo.InvariantCulture))" y="0" width="@Step.ToString("0.##", CultureInfo.InvariantCulture)" height="120" fill="transparent" @onclick="() => GoToAsync(position)" style="cursor:pointer" />
+                    }
+                </svg>
+                <MudText Typo="Typo.caption">White's winning chances after each move. Red dots are your mistakes and blunders. Click to jump.</MudText>
+            </div>
+
+            <div class="puzzle-side">
+                <MudPaper Class="pa-4 mb-4">
+                    @if (CurrentMove is { } move)
+                    {
+                        <MudText Typo="Typo.h6">@ReviewTimeline.MoveLabel(move.Ply, move.San)@(_notes.TryGetValue(move.Ply, out var shown) && shown.Glyph is not null ? " " + shown.Glyph : "")</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(move.IsMine ? "Your move" : "Their move")
+                            @if (move.Class.Length > 0)
+                            {
+                                <span> · <MudChip T="string" Size="Size.Small" Color="@ClassColor(move.Class)">@move.Class</MudChip></span>
+                            }
+                            · evaluation @ReviewTimeline.FormatEval(move.EvalBefore) → @ReviewTimeline.FormatEval(move.EvalAfter)
+                            @if (move.Clock is { } clock)
+                            {
+                                <span> · @(Math.Round(clock).ToString("0", CultureInfo.InvariantCulture))s left</span>
+                            }
+                        </MudText>
+                        @if (move.Class is "inaccuracy" or "mistake" or "blunder" && !string.IsNullOrEmpty(move.BestSan))
+                        {
+                            <MudText Typo="Typo.body2">The engine preferred <b>@move.BestSan</b> (lost @move.CpLoss centipawns).</MudText>
+                        }
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h6">Starting position</MudText>
+                        <MudText Typo="Typo.body2">Step through the game, or jump to your next mistake.</MudText>
+                    }
+                </MudPaper>
+
+                @if (CurrentMove is not null)
+                {
+                    <MudPaper Class="pa-4 mb-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Your annotation on this move</MudText>
+                        <div class="review-glyphs mb-2">
+                            @foreach (var glyph in ReviewTimeline.Glyphs)
+                            {
+                                var symbol = glyph;
+                                <MudButton Variant="@(_draftGlyph == symbol ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" OnClick="() => ToggleGlyphAsync(symbol)" aria-pressed="@(_draftGlyph == symbol ? "true" : "false")">@symbol</MudButton>
+                            }
+                        </div>
+                        <MudTextField T="string" @bind-Value="_draftNote" Label="Note" Variant="Variant.Outlined" Lines="4" Sizing="InputSizing.Auto" MaxLength="@ReviewTimeline.MaxNoteLength" OnBlur="SaveDraftAsync" HelperText="@(_saved ? "Saved" : "Saved when you click away")" />
+                    </MudPaper>
+                }
+
+                <MudPaper Class="pa-4 mb-4">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Note on the whole game</MudText>
+                    <MudTextField T="string" @bind-Value="_gameNote" Label="What happened in this game?" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto" MaxLength="@ReviewTimeline.MaxNoteLength" OnBlur="SaveGameNoteAsync" />
+                </MudPaper>
+
+                @if (_review.Moves.Count > 0)
+                {
+                    <MudPaper Class="pa-4 mb-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Moves</MudText>
+                        <div class="review-moves">
+                            @foreach (var row in ReviewTimeline.MoveRows(_review.Moves))
+                            {
+                                <span class="review-number">@row.Number.</span>
+                                @if (row.White is not null)
+                                {
+                                    @MoveCell(row.White)
+                                }
+                                else
+                                {
+                                    <span></span>
+                                }
+
+                                @if (row.Black is not null)
+                                {
+                                    @MoveCell(row.Black)
+                                }
+                                else
+                                {
+                                    <span></span>
+                                }
+                            }
+                        </div>
+                    </MudPaper>
+                }
+
+                @if (_notes.Count > 0)
+                {
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Your annotations</MudText>
+                        @foreach (var note in _notes.Values.OrderBy(n => n.Ply))
+                        {
+                            var ply = note.Ply;
+                            var label = _review.Moves.FirstOrDefault(m => m.Ply == ply) is { } annotated ? ReviewTimeline.MoveLabel(ply, annotated.San) : $"Move {ply}";
+                            <button type="button" class="review-note-item" @onclick="() => GoToAsync(ply)">
+                                <b>@label @note.Glyph</b> @ReviewTimeline.Shorten(note.Note, 90)
+                            </button>
+                        }
+                    </MudPaper>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private const double GraphWidth = 1000;
+    private const double GraphHeight = 120;
+
+    [Parameter] public string Id { get; set; } = "";
+
+    private GameReview? _review;
+    private string? _error;
+    private bool _loading = true;
+    private string? _loadedId;
+
+    private List<string> _fens = [];
+    private IReadOnlyList<double> _chances = [];
+    private ReviewSummary _summary = new(0, 0, 0, 0);
+    private List<int> _keyMoves = [];
+    private int? _previousKey;
+    private int? _nextKey;
+
+    private readonly Dictionary<int, MoveAnnotation> _notes = [];
+    private int _position;
+    private bool _showBest;
+
+    private string _draftNote = "";
+    private string? _draftGlyph;
+    private int _draftPly;
+    private bool _saved;
+    private bool _finalPositionMissing;
+
+    /// <summary>Saves run one at a time, so a save from leaving a box and one from moving on never overlap.</summary>
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
+    private string _gameNote = "";
+
+    private ReviewMove? CurrentMove => _review is not null && _position > 0 ? _review.Moves[_position - 1] : null;
+
+    private string CurrentFen => _fens.Count > _position ? _fens[_position] : "8/8/8/8/8/8/8/8 w - - 0 1";
+
+    private string? LastUci => CurrentMove?.Uci;
+
+    private double Step => _chances.Count > 1 ? GraphWidth / (_chances.Count - 1) : GraphWidth;
+
+    private string LinePoints => string.Join(" ", _chances.Select((c, i) => $"{Num(X(i))},{Num(Y(c))}"));
+
+    private string AreaPath => _chances.Count == 0
+        ? ""
+        : $"M0,{Num(GraphHeight)} " + string.Join(" ", _chances.Select((c, i) => $"L{Num(X(i))},{Num(Y(c))}")) + $" L{Num(GraphWidth)},{Num(GraphHeight)} Z";
+
+    private double X(int position) => _chances.Count > 1 ? position * Step : 0;
+
+    private double Y(int position) => Y(_chances[position]);
+
+    private static double Y(double chance) => GraphHeight - chance / 100 * GraphHeight;
+
+    private static string Num(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private IReadOnlyList<BoardMark> BoardMarks
+    {
+        get
+        {
+            // the engine's preferred move in the position on the board (the move about to be played)
+            if (!_showBest || _review is null || _position >= _review.Moves.Count) return [];
+            var best = _review.Moves[_position].BestUci;
+            return best is { Length: >= 4 } ? [new BoardMark(best[..2], "green", best[2..4])] : [];
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedId == Id) return;
+        _loadedId = Id;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _review = await Reviews.LoadAsync(Id);
+            _notes.Clear();
+            _position = 0;
+            _draftPly = 0;
+            _draftNote = "";
+            _draftGlyph = null;
+            if (_review is null) return;
+
+            foreach (var annotation in _review.Annotations) _notes[annotation.Ply] = annotation;
+            _gameNote = _review.GameNote;
+            _summary = ReviewTimeline.Summarise(_review.Moves);
+            _chances = ReviewTimeline.WhiteChances(_review.Moves);
+            _keyMoves = ReviewTimeline.KeyMoves(_review.Moves).ToList();
+            _fens = await BuildFensAsync(_review.Moves);
+            Refresh();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    /// <summary>The position before each move, then the position after the last one.</summary>
+    private async Task<List<string>> BuildFensAsync(IReadOnlyList<ReviewMove> moves)
+    {
+        var fens = moves.Select(m => m.FenBefore).ToList();
+        _finalPositionMissing = false;
+        if (moves.Count > 0)
+        {
+            var last = moves[^1];
+            var after = await Rules.FenAfterAsync(last.FenBefore, last.Uci);
+            _finalPositionMissing = after is null;
+            fens.Add(after ?? last.FenBefore);
+        }
+
+        return fens;
+    }
+
+    /// <summary>Moves to a position (0 is the start, n is after the nth move), saving any unsaved note first.</summary>
+    private async Task GoToAsync(int position)
+    {
+        if (_review is null) return;
+
+        // do not move on while the note on screen could not be saved: the text stays in its box with the error beside it
+        if (!await SaveDraftAsync()) return;
+        _position = Math.Clamp(position, 0, _review.Moves.Count);
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        if (_review is null) return;
+        _draftPly = _position;
+        var saved = _position > 0 && _notes.TryGetValue(_position, out var annotation) ? annotation : null;
+        _draftNote = saved?.Note ?? "";
+        _draftGlyph = saved?.Glyph;
+        _saved = false;
+        _previousKey = ReviewTimeline.KeyMoment(_review.Moves, _position, forward: false);
+        _nextKey = ReviewTimeline.KeyMoment(_review.Moves, _position, forward: true);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        // leave browser shortcuts such as Alt+Left (back) alone
+        if (e.AltKey || e.CtrlKey || e.MetaKey || e.ShiftKey) return;
+        if (e.Key == "ArrowLeft") await GoToAsync(_position - 1);
+        else if (e.Key == "ArrowRight") await GoToAsync(_position + 1);
+    }
+
+    private async Task ToggleGlyphAsync(string glyph)
+    {
+        _draftGlyph = _draftGlyph == glyph ? null : glyph;
+        await SaveDraftAsync();
+    }
+
+    /// <summary>Saves the note and symbol for the move on screen, when they differ from what is saved.</summary>
+    private async Task<bool> SaveDraftAsync()
+    {
+        if (_review is null) return true;
+
+        await _saveGate.WaitAsync();
+        try
+        {
+            // read what is on screen only now it is this save's turn, and keep it in locals across the await
+            var ply = _draftPly;
+            if (ply < 1) return true;
+            var glyph = _draftGlyph;
+            var note = (_draftNote ?? "").Trim();
+            _notes.TryGetValue(ply, out var current);
+            if ((current?.Note ?? "") == note && current?.Glyph == glyph) return true;
+
+            await Reviews.SaveMoveAnnotationAsync(_review.Game.Id, ply, glyph, note);
+            if (note.Length == 0 && glyph is null) _notes.Remove(ply);
+            else _notes[ply] = new MoveAnnotation(ply, glyph, note);
+            if (ply == _draftPly) _saved = true;
+            _error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"The note was not saved: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
+    }
+
+    private async Task<bool> SaveGameNoteAsync()
+    {
+        if (_review is null) return true;
+
+        await _saveGate.WaitAsync();
+        try
+        {
+            var note = _gameNote.Trim();
+            if (note == _review.GameNote) return true;
+
+            await Reviews.SaveGameNoteAsync(_review.Game.Id, note);
+            _review = _review with { GameNote = note };
+            _error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"The note was not saved: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
+    }
+
+    /// <summary>Last chance to keep what was typed when the page is left without clicking away first.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await SaveDraftAsync();
+            await SaveGameNoteAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            // the circuit is already gone: nothing more can be saved
+        }
+    }
+
+    private RenderFragment MoveCell(ReviewMove move) => builder =>
+    {
+        var annotation = _notes.GetValueOrDefault(move.Ply);
+        var classes = $"review-move {(move.Ply == _position ? "selected" : "")} cls-{(move.IsMine ? move.Class : "")}";
+        var ply = move.Ply;
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "type", "button");
+        builder.AddAttribute(2, "class", classes);
+        builder.AddAttribute(3, "onclick", EventCallback.Factory.Create(this, () => GoToAsync(ply)));
+        builder.AddContent(4, move.San + (annotation?.Glyph ?? "") + (annotation is { Note.Length: > 0 } ? " ✎" : ""));
+        builder.CloseElement();
+    };
+
+    private static Color ResultColor(string result) => result switch
+    {
+        "win" => Color.Success,
+        "loss" => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static Color ClassColor(string cls) => cls switch
+    {
+        "blunder" => Color.Error,
+        "mistake" => Color.Warning,
+        "inaccuracy" => Color.Info,
+        _ => Color.Default,
+    };
+}

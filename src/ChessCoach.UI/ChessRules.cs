@@ -16,6 +16,13 @@ public sealed class ChessRules(IJSRuntime js) : IAsyncDisposable
         return await _module.InvokeAsync<DrillAnswers>("drillAnswers", fen, uci);
     }
 
+    /// <summary>The position after the move (UCI) is played from <paramref name="fen"/>, or null when the move is not legal there.</summary>
+    public async Task<string?> FenAfterAsync(string fen, string uci)
+    {
+        _module ??= await js.InvokeAsync<IJSObjectReference>("import", "./_content/ChessCoach.UI/js/chess-rules.js");
+        return await _module.InvokeAsync<string?>("fenAfter", fen, uci);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_module is not null) await _module.DisposeAsync();

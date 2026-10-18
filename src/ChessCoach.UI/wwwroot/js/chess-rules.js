@@ -41,6 +41,17 @@ export function hangingSquares(fen, color) {
     return out.sort();
 }
 
+/** The position after `uci` is played from `fen`, or null when the move is not legal there. */
+export function fenAfter(fen, uci) {
+    const chess = load(fen);
+    try {
+        chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+    } catch {
+        return null;
+    }
+    return chess.fen();
+}
+
 /**
  * Everything the daily drill needs for one position and the move played in it:
  * checks/captures = destination squares of the mover's checking/capturing moves; threats = the mover's pieces
