@@ -43,13 +43,14 @@ public sealed class AppNavigation : IDisposable
         var target = _navigation.GetUriWithQueryParameters(parameters);
         if (target == _navigation.Uri) return;
 
-        _history.ReplaceNext();
+        _history.ExpectReplace(target);
         _navigation.NavigateTo(target, replace: true);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        _history.Arrive(e.Location);
+        // a click on a link is never the browser's own Back, so reaching the previous page that way is a new visit
+        _history.Arrive(e.Location, mayBeBack: !e.IsNavigationIntercepted);
         Changed?.Invoke();
     }
 

@@ -9,7 +9,7 @@ public sealed class PageHistory(int capacity = PageHistory.DefaultCapacity)
     public const int DefaultCapacity = 50;
 
     private readonly List<string> _entries = [];
-    private bool _replaceNext;
+    private string? _replaceTarget;
 
     /// <summary>The page being shown, or null before the first one.</summary>
     public string? Current => _entries.Count == 0 ? null : _entries[^1];
@@ -19,20 +19,25 @@ public sealed class PageHistory(int capacity = PageHistory.DefaultCapacity)
     public int Count => _entries.Count;
 
     /// <summary>
-    /// Marks the next arrival as a change to the page already shown (such as picking a tab), which updates its entry
-    /// instead of adding one. Used once: the arrival after it is an ordinary visit again.
+    /// Says that the next arrival, if it is at <paramref name="location"/>, is a change to the page already shown (such as picking a
+    /// tab), so it updates that entry instead of adding one. It holds for one arrival only: any other arrival cancels it, so a change
+    /// that never happens cannot swallow a later visit.
     /// </summary>
-    public void ReplaceNext() => _replaceNext = true;
+    public void ExpectReplace(string location) => _replaceTarget = location;
 
     /// <summary>
-    /// The user arrived at <paramref name="location"/>. A new page is added; the same page again changes nothing; a change
-    /// marked with <see cref="ReplaceNext"/> replaces the current entry; and arriving at the page just before the current one
-    /// (the browser's own Back, or Alt+Left) counts as going back, so the two never get out of step.
+    /// The user arrived at <paramref name="location"/>. A new page is added; the same page again changes nothing; a change announced
+    /// with <see cref="ExpectReplace"/> replaces the current entry; and arriving at the page just before the current one counts as
+    /// going back, so the browser's own Back (or Alt+Left) and this history never get out of step.
     /// </summary>
-    public void Arrive(string location)
+    /// <param name="mayBeBack">
+    /// False when the arrival is known not to be the browser's own Back, such as a click on a link. Then reaching the previous page
+    /// again is a new visit (A, then B, then A by a link keeps all three), not a step back.
+    /// </param>
+    public void Arrive(string location, bool mayBeBack = true)
     {
-        var replace = _replaceNext;
-        _replaceNext = false;
+        var replaceTarget = _replaceTarget;
+        _replaceTarget = null;
 
         if (_entries.Count == 0)
         {
@@ -42,13 +47,13 @@ public sealed class PageHistory(int capacity = PageHistory.DefaultCapacity)
 
         if (location == Current) return;
 
-        if (replace)
+        if (replaceTarget == location)
         {
             _entries[^1] = location;
             return;
         }
 
-        if (_entries.Count > 1 && location == _entries[^2])
+        if (mayBeBack && _entries.Count > 1 && location == _entries[^2])
         {
             _entries.RemoveAt(_entries.Count - 1);
             return;
@@ -63,7 +68,7 @@ public sealed class PageHistory(int capacity = PageHistory.DefaultCapacity)
     {
         if (!CanGoBack) return null;
         _entries.RemoveAt(_entries.Count - 1);
-        _replaceNext = false;
+        _replaceTarget = null;
         return Current;
     }
 }

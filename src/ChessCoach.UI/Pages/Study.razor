@@ -1,4 +1,5 @@
 @page "/study"
+@using ChessCoach.Core.Navigation
 @inject AppNavigation Navigation
 
 <PageTitle>Study · ChessCoach</PageTitle>
@@ -8,7 +9,7 @@
 
 <ColorFilterBar Value="@_color" ValueChanged="ColorChanged" />
 
-<MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" ActivePanelIndex="_tab" ActivePanelIndexChanged="TabChanged">
+<MudTabs Elevation="0" Rounded="true" TabPanelsClass="pt-4" ActivePanelIndex="@_tab" ActivePanelIndexChanged="TabChanged">
     <MudTabPanel Text="Opponents">
         <OpponentsPanel ColorFilter="@_color" />
     </MudTabPanel>
@@ -27,7 +28,7 @@
     private const int TabCount = 4;
 
     /// <summary>The tab and colour live in the address, so going Back to this page shows the same ones.</summary>
-    [SupplyParameterFromQuery(Name = "tab")] public int? TabParameter { get; set; }
+    [SupplyParameterFromQuery(Name = "tab")] public string? TabParameter { get; set; }
 
     [SupplyParameterFromQuery(Name = "color")] public string? ColorParameter { get; set; }
 
@@ -36,8 +37,8 @@
 
     protected override void OnParametersSet()
     {
-        _tab = Math.Clamp(TabParameter ?? 0, 0, TabCount - 1);
-        _color = ColorParameter is "white" or "black" ? ColorParameter : null;
+        _tab = QueryChoice.Tab(TabParameter, TabCount);
+        _color = QueryChoice.Color(ColorParameter);
     }
 
     private void TabChanged(int tab)

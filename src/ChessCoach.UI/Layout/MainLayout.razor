@@ -11,7 +11,7 @@
 <div class="app-shell theme-@Theme.Current.Id">
     <header class="app-header">
         <div class="app-left">
-            <button type="button" class="back-button" disabled="@(!AppNav.CanGoBack)" @onclick="AppNav.GoBack" aria-label="Go back to the previous page" title="Back (Alt+Left)">
+            <button type="button" class="back-button" aria-disabled="@(AppNav.CanGoBack ? "false" : "true")" @onclick="AppNav.GoBack" title="Back to the previous page">
                 <span aria-hidden="true">‹</span> Back
             </button>
             <div class="app-brand">

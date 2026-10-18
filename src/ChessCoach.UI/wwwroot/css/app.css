@@ -447,6 +447,6 @@ html, body {
 
 .app-left { display: flex; align-items: center; gap: 16px; }
 .back-button { display: inline-flex; align-items: center; gap: 4px; padding: 6px 14px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: 999px; background: transparent; color: var(--mud-palette-text-primary); font: inherit; font-weight: 600; cursor: pointer; }
-.back-button:hover:not(:disabled) { background: var(--mud-palette-action-default-hover); }
+.back-button:hover:not([aria-disabled="true"]) { background: var(--mud-palette-action-default-hover); }
 .back-button:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: 2px; }
-.back-button:disabled { opacity: 0.45; cursor: default; }
+.back-button[aria-disabled="true"] { opacity: 0.45; cursor: default; }
