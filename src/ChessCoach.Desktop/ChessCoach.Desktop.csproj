@@ -6,7 +6,12 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>ChessCoach</AssemblyName>
     <RootNamespace>ChessCoach.Desktop</RootNamespace>
+    <ApplicationIcon>Assets\chesscoach.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\chesscoach.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ChessCoach.Core\ChessCoach.Core.csproj" />
