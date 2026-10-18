@@ -487,6 +487,7 @@ $RECYCLE.BIN/
 .env.*
 anthropic-api-key.bin
 appsettings.*.local.json
+appsettings.local.json
 analysis/.venv/
 *.db
 *.db-wal

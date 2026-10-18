@@ -54,6 +54,9 @@ public partial class App : Application
             Args = args,
             ContentRootPath = AppContext.BaseDirectory,
         });
+        // Optional, per machine, and git-ignored (appsettings.*.local.json): e.g. where the analysis scripts live
+        // when the app is published outside the repository.
+        builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: false);
 
         var dataDirectory = builder.Configuration[$"{ChessCoachOptions.SectionName}:{nameof(ChessCoachOptions.DataDirectory)}"]
             ?? throw new InvalidOperationException("ChessCoach:DataDirectory is not set in appsettings.json.");
