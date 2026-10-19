@@ -36,7 +36,7 @@ else
         </MudSimpleTable>
         <div class="d-flex align-center gap-4 mt-3">
             <MudText Typo="Typo.caption">Showing @_recent.Games.Count.ToString("N0", CultureInfo.InvariantCulture) of @_recent.Total.ToString("N0", CultureInfo.InvariantCulture) games.</MudText>
-            @if (_recent.Remaining > 0)
+            @if (_recent.Remaining > 0 && _count < MaxShown)
             {
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="ShowMoreAsync">Show more (@Math.Min(RecentGamesCalculator.PageSize, _recent.Remaining) more)</MudButton>
             }
@@ -47,6 +47,13 @@ else
 @code {
     [Parameter] public string? ColorFilter { get; set; }
 
+    /// <summary>How many games to show; the page keeps it in the address, so going Back shows the same ones.</summary>
+    [Parameter] public int Shown { get; set; } = RecentGamesCalculator.PageSize;
+
+    [Parameter] public EventCallback<int> ShownChanged { get; set; }
+
+    public const int MaxShown = 5000;
+
     private RecentGames? _recent;
     private string? _error;
     private string? _loadedColor;
@@ -56,14 +63,15 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_loaded && _loadedColor == ColorFilter) return;
-        _count = RecentGamesCalculator.PageSize;
+        if (_loaded && _loadedColor == ColorFilter && _count == Shown) return;
+        _count = Shown;
         await LoadAsync();
     }
 
     private async Task ShowMoreAsync()
     {
-        _count += RecentGamesCalculator.PageSize;
+        _count = Math.Min(_count + RecentGamesCalculator.PageSize, MaxShown);
+        await ShownChanged.InvokeAsync(_count);
         await LoadAsync();
     }
 
