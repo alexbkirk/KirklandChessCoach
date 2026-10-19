@@ -5,6 +5,12 @@ namespace ChessCoach.UI;
 /// <summary>The answers the daily drill needs for a position (computed with chess.js in the browser).</summary>
 public sealed record DrillAnswers(string FenAfter, string[] Checks, string[] Captures, string[] Threats, string[] Hanging);
 
+/// <summary>The first move that could not be played: Index is the ply (0-based), Text is what was typed.</summary>
+public sealed record MoveError(int Index, string Text, string Message);
+
+/// <summary>The SAN moves read from a movetext, and the first illegal move when there is one.</summary>
+public sealed record ParsedMoves(string[] Sans, MoveError? Error);
+
 /// <summary>Chess rules from chess.js (wwwroot/js/chess-rules.js); the C# side has no chess library.</summary>
 public sealed class ChessRules(IJSRuntime js) : IAsyncDisposable
 {
@@ -21,6 +27,13 @@ public sealed class ChessRules(IJSRuntime js) : IAsyncDisposable
     {
         _module ??= await js.InvokeAsync<IJSObjectReference>("import", "./_content/ChessCoach.UI/js/chess-rules.js");
         return await _module.InvokeAsync<string?>("fenAfter", fen, uci);
+    }
+
+    /// <summary>Reads movetext (SAN, with or without move numbers) from the start position; the error names the first move that is not legal.</summary>
+    public async Task<ParsedMoves> ParseMovesAsync(string text)
+    {
+        _module ??= await js.InvokeAsync<IJSObjectReference>("import", "./_content/ChessCoach.UI/js/chess-rules.js");
+        return await _module.InvokeAsync<ParsedMoves>("parseMoves", text);
     }
 
     public async ValueTask DisposeAsync()
