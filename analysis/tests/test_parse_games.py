@@ -67,6 +67,12 @@ class UnreadableHeaders(unittest.TestCase):
     def test_a_placeholder_date_is_skipped(self):
         self.assertEqual(parse_pgn_text(self._pgn('[Date "????.??.??"]'), "me"), [])
 
+    def test_a_real_utc_date_is_used_and_a_placeholder_one_falls_back_to_the_date(self):
+        good = parse_pgn_text(self._pgn('[Date "2026.01.02"]\n[UTCDate "2026.01.03"]'), "me")
+        self.assertEqual(good[0]["date"], "2026-01-03")
+        fallback = parse_pgn_text(self._pgn('[Date "2026.01.02"]\n[UTCDate "????.??.??"]'), "me")
+        self.assertEqual(fallback[0]["date"], "2026-01-02")
+
 
 if __name__ == "__main__":
     unittest.main()

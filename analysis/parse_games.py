@@ -50,7 +50,8 @@ def parse_pgn_text(txt, me):
     for b in re.split(r'\n\n(?=\[Event )', txt.strip()):
         h = dict(re.findall(r'^\[(\w+) "(.*)"\]$', b, re.M))
         if "White" not in h: continue
-        if not re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", h.get("UTCDate") or h.get("Date") or ""): continue   # no real date (missing or "????.??.??"): the app cannot place the game
+        date = next((d for d in (h.get("UTCDate"), h.get("Date")) if re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", d or "")), None)
+        if date is None: continue   # no real date (missing or "????.??.??"): the app cannot place the game
         if h.get("Variant") and h["Variant"] != "Chess": continue   # skip Chess960 etc.
         moves = b.split("\n\n", 1)[1].strip() if "\n\n" in b else ""
         white = h["White"].lower() == me
@@ -61,7 +62,7 @@ def parse_pgn_text(txt, me):
         clean = re.sub(r'\s+', ' ', re.sub(r'\{[^}]*\}|\d+\.\.\.', '', moves)).strip()
         games.append(dict(
             id=h.get("Link", "").rstrip("/").rsplit("/", 1)[-1], url=h.get("Link", ""),
-            date=(h.get("UTCDate") or h["Date"]).replace(".", "-"), time=h.get("UTCTime", ""),
+            date=date.replace(".", "-"), time=h.get("UTCTime", ""),
             color="white" if white else "black", result=res, ending=ending(h.get("Termination", "")),
             timeControl=h.get("TimeControl", ""), timeClass=tclass(h.get("TimeControl", "")),
             myRating=to_int(h.get("WhiteElo" if white else "BlackElo")),
