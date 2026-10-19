@@ -1,3 +1,4 @@
+@using ChessCoach.Core.Domain
 @if (ReviewId.Length > 0)
 {
     <a href="/review/@ReviewId">@Text</a>
@@ -12,5 +13,5 @@
 
     [Parameter] public string Text { get; set; } = "Review";
 
-    private string ReviewId => !string.IsNullOrEmpty(Id) ? Id : Url.TrimEnd('/')[(Url.TrimEnd('/').LastIndexOf('/') + 1)..];
+    private string ReviewId => !string.IsNullOrEmpty(Id) ? Id : GameLinks.IdFromUrl(Url);
 }
