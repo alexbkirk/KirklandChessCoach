@@ -1,0 +1,90 @@
+@using ChessCoach.Core.Domain
+@using ChessCoach.Core.Abstractions
+@inject ITournamentRepository Repository
+@inject ChessRules Rules
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4">A saved game is analysed the next time you run Check for new games.</MudText>
+        <MudStack Spacing="2">
+            <MudDatePicker Label="Date" Date="_date" DateChanged="d => _date = d" Required="true" />
+            <MudTextField T="string" Label="Event name" @bind-Value="_event" Variant="Variant.Outlined" />
+            <MudSelect T="string" Label="My colour" Value="_myColor" ValueChanged="v => _myColor = v" Variant="Variant.Outlined">
+                <MudSelectItem T="string" Value="@("white")">White</MudSelectItem>
+                <MudSelectItem T="string" Value="@("black")">Black</MudSelectItem>
+            </MudSelect>
+            <MudTextField T="string" Label="Opponent" @bind-Value="_opponent" Variant="Variant.Outlined" />
+            <MudNumericField T="int" Label="My rating" @bind-Value="_myRating" Variant="Variant.Outlined" Min="0" Max="4000" />
+            <MudNumericField T="int" Label="Opponent rating" @bind-Value="_oppRating" Variant="Variant.Outlined" Min="0" Max="4000" />
+            <MudSelect T="string" Label="Result" Value="_result" ValueChanged="v => _result = v" Variant="Variant.Outlined">
+                <MudSelectItem T="string" Value="@("win")">Win</MudSelectItem>
+                <MudSelectItem T="string" Value="@("draw")">Draw</MudSelectItem>
+                <MudSelectItem T="string" Value="@("loss")">Loss</MudSelectItem>
+            </MudSelect>
+            <MudTextField T="string" Label="Moves" Lines="6" Variant="Variant.Outlined" Value="_moves" ValueChanged="OnMovesChangedAsync" Immediate="true" HelperText="Paste the moves in standard notation, with or without move numbers." />
+            @if (_parseError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_parseError</MudAlert>
+            }
+            else if (_sanCount is not null)
+            {
+                <MudText Typo="Typo.caption">@_sanCount moves read</MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="!CanSave" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private DateTime? _date = DateTime.Today;
+    private string _event = "";
+    private string _myColor = "white";
+    private string _opponent = "";
+    private int _myRating;
+    private int _oppRating;
+    private string _result = "win";
+    private string _moves = "";
+    private string[]? _sans;
+    private int? _sanCount;
+    private string? _parseError;
+    private int _parseTicket;
+
+    private bool CanSave => _sans is { Length: > 0 } && _parseError is null && !string.IsNullOrWhiteSpace(_opponent);
+
+    private async Task OnMovesChangedAsync(string value)
+    {
+        _moves = value;
+        var ticket = ++_parseTicket;
+        var parsed = await Rules.ParseMovesAsync(value);
+        if (ticket != _parseTicket) return;
+
+        _sans = parsed.Sans;
+        _sanCount = parsed.Sans.Length;
+        _parseError = parsed.Error is null
+            ? null
+            : $"Move {parsed.Error.Index / 2 + 1} ({parsed.Error.Text}) is not legal";
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        if (!CanSave) return;
+        var game = new ManualGame(
+            DateOnly.FromDateTime(_date ?? DateTime.Today),
+            _myColor,
+            _opponent.Trim(),
+            _myRating,
+            _oppRating,
+            _result,
+            _event.Trim(),
+            _sans!);
+        await Repository.AddManualGameAsync(game);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+}
