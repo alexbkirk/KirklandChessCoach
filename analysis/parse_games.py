@@ -58,5 +58,6 @@ def parse_pgn_text(txt, me):
             oppRating=int(h.get("BlackElo" if white else "WhiteElo", 0) or 0),
             opponent=h["Black" if white else "White"], eco=h.get("ECO", ""),
             opening=name, family=family(name), plies=len(re.findall(r'\d+\.', clean)) * 2,
+            tournament=h.get('Tournament') or None,
             moves=clean, pgn=b))
     return games
