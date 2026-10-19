@@ -17,6 +17,7 @@ def family(name):
 def tclass(tc):
     if "/" in tc: return "daily"
     m = re.match(r'(\d+)(?:\+(\d+))?', tc)
+    if not m: return "other"   # no clock or an unreadable time control (for example "-"): not rapid, blitz or bullet
     t = int(m.group(1)) + 40 * int(m.group(2) or 0)
     return "bullet" if t < 180 else "blitz" if t < 600 else "rapid"   # chess.com: rapid = 10 min and up (10|0 counts as rapid)
 
