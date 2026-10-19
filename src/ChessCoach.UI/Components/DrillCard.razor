@@ -72,7 +72,7 @@
                     }
                 </div>
             }
-            <MudText Typo="Typo.caption" Class="focus-hide"><a href="@Slot.Position.Url" target="_blank" rel="noopener">view game</a> · @Slot.Position.Date vs <a href="@OpponentLinks.For(Slot.Position.Opponent)">@Slot.Position.Opponent</a></MudText>
+            <MudText Typo="Typo.caption" Class="focus-hide"><a href="@Slot.Position.Url" target="_blank" rel="noopener">view game</a> · <GameReviewLink Url="@Slot.Position.Url" Text="review game" /> · @Slot.Position.Date vs <a href="@OpponentLinks.For(Slot.Position.Opponent)">@Slot.Position.Opponent</a></MudText>
         }
     }
 </MudPaper>

@@ -97,7 +97,7 @@ else
                             <td class="text-right">@row.MyBlunders</td>
                             <td class="text-right">@row.TheirBlunders</td>
                             <td class="text-right">@g.MyRating – @g.OppRating</td>
-                            <td><a href="@g.Url" target="_blank" rel="noopener">view</a></td>
+                            <td><GameReviewLink Id="@g.GameId" Text="review" />@if (!string.IsNullOrEmpty(g.Url)) { <text> · <a href="@g.Url" target="_blank" rel="noopener">view</a></text> }</td>
                         </tr>
                     }
                 </tbody>
@@ -125,7 +125,7 @@ else
                                 <td class="text-right">@Chances(m)</td>
                                 <td class="text-right">@Clock(m.Clock)</td>
                                 <td>@m.NoteHeadline</td>
-                                <td><a href="@m.Game.Url" target="_blank" rel="noopener">view</a></td>
+                                <td><GameReviewLink Id="@m.Game.GameId" Text="review" />@if (!string.IsNullOrEmpty(m.Game.Url)) { <text> · <a href="@m.Game.Url" target="_blank" rel="noopener">view</a></text> }</td>
                             </tr>
                         }
                     </tbody>
@@ -165,7 +165,7 @@ else
                                     }
                                 </td>
                                 <td>@(m.Punished ? "" : m.ReplyBestSan)</td>
-                                <td><a href="@m.Game.Url" target="_blank" rel="noopener">view</a></td>
+                                <td><GameReviewLink Id="@m.Game.GameId" Text="review" />@if (!string.IsNullOrEmpty(m.Game.Url)) { <text> · <a href="@m.Game.Url" target="_blank" rel="noopener">view</a></text> }</td>
                             </tr>
                         }
                     </tbody>
