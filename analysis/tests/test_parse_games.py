@@ -35,10 +35,6 @@ class ParseTournament(unittest.TestCase):
         self.assertIsNone(games[0]["tournament"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TimeClass(unittest.TestCase):
     def test_usual_time_controls(self):
         self.assertEqual(tclass("60"), "bullet")
@@ -55,3 +51,19 @@ class TimeClass(unittest.TestCase):
         pgn = '[Event "Live Chess"]\n[White "me"]\n[Black "you"]\n[Result "1-0"]\n[Date "2026.01.01"]\n[TimeControl "-"]\n\n1. e4 e5 1-0'
         games = parse_pgn_text(pgn, "me")
         self.assertEqual([g["timeClass"] for g in games], ["other"])
+
+
+class UnreadableHeaders(unittest.TestCase):
+    def _pgn(self, extra):
+        return '[Event "Live Chess"]\n[White "me"]\n[Black "you"]\n[Result "1-0"]\n' + extra + '\n\n1. e4 e5 1-0'
+
+    def test_a_rating_that_is_not_a_number_is_zero(self):
+        games = parse_pgn_text(self._pgn('[Date "2026.01.01"]\n[WhiteElo "-"]\n[BlackElo "?"]'), "me")
+        self.assertEqual((games[0]["myRating"], games[0]["oppRating"]), (0, 0))
+
+    def test_a_game_with_no_date_is_skipped_not_a_crash(self):
+        self.assertEqual(parse_pgn_text(self._pgn('[WhiteElo "1500"]'), "me"), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
