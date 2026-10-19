@@ -41,6 +41,37 @@ export function hangingSquares(fen, color) {
     return out.sort();
 }
 
+const RESULT_TOKENS = new Set(["1-0", "0-1", "1/2-1/2", "*"]);
+
+/**
+ * Parses pasted or typed standard algebraic notation from the start position.
+ * Move numbers, {comments}, ;comments, result markers, NAGs and extra whitespace are ignored.
+ * Returns { sans, error }: sans are the normalised SAN moves played; error is null when every move is legal,
+ * otherwise { index, text, message } for the first move that is not legal (index is 0-based in the move list).
+ */
+export function parseMoves(text) {
+    const cleaned = String(text ?? "")
+        .replace(/\{[^}]*\}/g, " ")
+        .replace(/;[^\n]*/g, " ");
+    const tokens = [];
+    for (const raw of cleaned.split(/\s+/)) {
+        if (!raw || RESULT_TOKENS.has(raw) || /^\$\d+$/.test(raw)) continue;
+        const token = raw.replace(/^\d+\.+/, "").replace(/[!?]+$/, "").replace(/^0-0-0(?=[+#]?$)/, "O-O-O").replace(/^0-0(?=[+#]?$)/, "O-O");
+        if (token && !RESULT_TOKENS.has(token)) tokens.push(token);
+    }
+    const chess = new Chess();
+    const sans = [];
+    for (let index = 0; index < tokens.length; index++) {
+        const text = tokens[index];
+        try {
+            sans.push(chess.move(text).san);
+        } catch {
+            return { sans, error: { index, text, message: `Illegal move "${text}" at move ${index + 1}` } };
+        }
+    }
+    return { sans, error: null };
+}
+
 /** The position after `uci` is played from `fen`, or null when the move is not legal there. */
 export function fenAfter(fen, uci) {
     const chess = load(fen);

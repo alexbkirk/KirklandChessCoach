@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddSingleton<OpeningReportService>();
         services.AddSingleton<OpeningVariationService>();
         services.AddSingleton<IStatsRepository, StatsRepository>();
+        services.AddSingleton<ITournamentRepository, TournamentRepository>();
         services.AddSingleton<IGameReviewRepository, GameReviewRepository>();
         services.AddSingleton<GameReviewService>();
         services.AddSingleton<StatsService>();
