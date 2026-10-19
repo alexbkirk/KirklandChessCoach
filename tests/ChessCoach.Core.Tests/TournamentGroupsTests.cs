@@ -113,4 +113,12 @@ public sealed class TournamentGroupsTests
 
         Assert.Empty(result);
     }
+
+    [Theory]
+    [InlineData("https://www.chess.com/tournament/live/-", "https://www.chess.com/tournament/live/-")]
+    [InlineData("https://www.chess.com/tournament/live/---", "https://www.chess.com/tournament/live/---")]
+    public void A_link_with_no_name_in_its_last_part_falls_back_to_the_key(string key, string expected)
+    {
+        Assert.Equal(expected, TournamentGroups.NameOf(key));
+    }
 }

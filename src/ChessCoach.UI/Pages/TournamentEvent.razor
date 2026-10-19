@@ -8,7 +8,7 @@
 
 <PageTitle>@_title · ChessCoach</PageTitle>
 
-<a href="tournament" class="focus-hide">Back to Tournament</a>
+<a href="/tournament" class="focus-hide">Back to Tournament</a>
 
 <MudText Typo="Typo.h4" HtmlTag="h1" Class="page-title">@_title</MudText>
 @if (_summary is not null)
@@ -27,7 +27,7 @@ else if (_loading)
 else if (_summary is null)
 {
     <MudAlert Severity="Severity.Info">
-        Tournament not found. <a href="tournament">Back to Tournament</a>
+        Tournament not found. <a href="/tournament">Back to Tournament</a>
     </MudAlert>
 }
 else

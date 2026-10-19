@@ -38,9 +38,9 @@ public static class TournamentGroups
         {
             var path = uri.AbsolutePath.Trim('/');
             var last = path[(path.LastIndexOf('/') + 1)..];
-            if (last.Trim().Length > 0)
+            var words = last.Replace('-', ' ').Trim();
+            if (words.Length > 0)
             {
-                var words = last.Replace('-', ' ').Trim();
                 return char.ToUpperInvariant(words[0]) + words[1..];
             }
         }
@@ -72,7 +72,7 @@ public static class TournamentGroups
                     Name: NameOf(group.Key),
                     Start: ordered.Min(g => g.Date),
                     End: ordered.Max(g => g.Date),
-                    OverTheBoard: !group.Key.StartsWith("http", StringComparison.Ordinal),
+                    OverTheBoard: group.Key.StartsWith(OtbPrefix, StringComparison.Ordinal) || group.Key == OverTheBoardKey,
                     Games: ordered,
                     Prep: TournamentPrepCalculator.Compute(ordered, moves));
             })
