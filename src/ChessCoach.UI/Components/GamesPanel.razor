@@ -1,8 +1,6 @@
 @using System.Globalization
-@using ChessCoach.Core.Navigation
 @using ChessCoach.Core.Stats
 @inject StatsService StatsService
-@inject AppNavigation Navigation
 
 @if (_error is not null)
 {
@@ -38,7 +36,7 @@ else
         </MudSimpleTable>
         <div class="d-flex align-center gap-4 mt-3">
             <MudText Typo="Typo.caption">Showing @_recent.Games.Count.ToString("N0", CultureInfo.InvariantCulture) of @_recent.Total.ToString("N0", CultureInfo.InvariantCulture) games.</MudText>
-            @if (_recent.Remaining > 0)
+            @if (_recent.Remaining > 0 && _count < MaxShown)
             {
                 <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="ShowMoreAsync">Show more (@Math.Min(RecentGamesCalculator.PageSize, _recent.Remaining) more)</MudButton>
             }
@@ -49,10 +47,12 @@ else
 @code {
     [Parameter] public string? ColorFilter { get; set; }
 
-    /// <summary>How many games are shown lives in the address, so going Back to this list shows the same ones.</summary>
-    [SupplyParameterFromQuery(Name = "shown")] public string? ShownParameter { get; set; }
+    /// <summary>How many games to show; the page keeps it in the address, so going Back shows the same ones.</summary>
+    [Parameter] public int Shown { get; set; } = RecentGamesCalculator.PageSize;
 
-    private const int MaxShown = 5000;
+    [Parameter] public EventCallback<int> ShownChanged { get; set; }
+
+    public const int MaxShown = 5000;
 
     private RecentGames? _recent;
     private string? _error;
@@ -63,16 +63,15 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        var shown = QueryChoice.Count(ShownParameter, RecentGamesCalculator.PageSize, MaxShown);
-        if (_loaded && _loadedColor == ColorFilter && _count == shown) return;
-        _count = _loadedColor == ColorFilter || !_loaded ? shown : RecentGamesCalculator.PageSize;
+        if (_loaded && _loadedColor == ColorFilter && _count == Shown) return;
+        _count = Shown;
         await LoadAsync();
     }
 
     private async Task ShowMoreAsync()
     {
         _count = Math.Min(_count + RecentGamesCalculator.PageSize, MaxShown);
-        Navigation.ReplaceQuery(new Dictionary<string, object?> { ["shown"] = _count });
+        await ShownChanged.InvokeAsync(_count);
         await LoadAsync();
     }
 

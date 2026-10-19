@@ -1,5 +1,6 @@
 @page "/study"
 @using ChessCoach.Core.Navigation
+@using ChessCoach.Core.Stats
 @inject AppNavigation Navigation
 
 <PageTitle>Study · ChessCoach</PageTitle>
@@ -17,7 +18,7 @@
         <BlundersPanel ColorFilter="@_color" />
     </MudTabPanel>
     <MudTabPanel Text="Games">
-        <GamesPanel ColorFilter="@_color" />
+        <GamesPanel ColorFilter="@_color" Shown="_shown" ShownChanged="ShownChanged" />
     </MudTabPanel>
     <MudTabPanel Text="Habits">
         <HabitsPanel ColorFilter="@_color" />
@@ -32,6 +33,9 @@
 
     [SupplyParameterFromQuery(Name = "color")] public string? ColorParameter { get; set; }
 
+    [SupplyParameterFromQuery(Name = "shown")] public string? ShownParameter { get; set; }
+
+    private int _shown;
     private int _tab;
     private string? _color;
 
@@ -39,6 +43,13 @@
     {
         _tab = QueryChoice.Tab(TabParameter, TabCount);
         _color = QueryChoice.Color(ColorParameter);
+        _shown = QueryChoice.Count(ShownParameter, RecentGamesCalculator.PageSize, GamesPanel.MaxShown);
+    }
+
+    private void ShownChanged(int shown)
+    {
+        _shown = shown;
+        Remember();
     }
 
     private void TabChanged(int tab)
@@ -50,6 +61,7 @@
     private void ColorChanged(string? color)
     {
         _color = color;
+        _shown = RecentGamesCalculator.PageSize;
         Remember();
     }
 
@@ -57,5 +69,6 @@
     {
         ["tab"] = _tab == 0 ? null : _tab,
         ["color"] = _color,
+        ["shown"] = _shown == RecentGamesCalculator.PageSize ? null : _shown,
     });
 }
