@@ -116,6 +116,74 @@ public sealed class TournamentRepositoryTests
     }
 
     [Fact]
+    public async Task Manual_game_tournament_key_is_otb_with_its_event()
+    {
+        using var db = new TempDatabase();
+        await db.Migrations.MigrateAsync();
+        var repository = new TournamentRepository(db.Connections);
+        var game = MakeGame(Sans:["e4", "e5"]);
+
+        await repository.AddManualGameAsync(game);
+
+        var keys = await repository.LoadTournamentKeysAsync();
+        Assert.Equal("otb:Club Open", keys[game.Id]);
+    }
+
+    [Fact]
+    public async Task Manual_game_event_is_trimmed_in_tournament_key()
+    {
+        using var db = new TempDatabase();
+        await db.Migrations.MigrateAsync();
+        var repository = new TournamentRepository(db.Connections);
+        var game = new ManualGame(
+            Date: new DateOnly(2026, 10, 18),
+            MyColor: "white",
+            Opponent: "Carol",
+            MyRating: 1500,
+            OppRating: 1480,
+            Result: "win",
+            Event: "  Club Open  ",
+            Sans: ["e4", "e5"]);
+
+        await repository.AddManualGameAsync(game);
+
+        var keys = await repository.LoadTournamentKeysAsync();
+        Assert.Equal("otb:Club Open", keys[game.Id]);
+    }
+
+    [Fact]
+    public async Task Tournament_keys_return_the_url_of_a_chess_com_tournament_game()
+    {
+        using var db = new TempDatabase();
+        await db.Migrations.MigrateAsync();
+        await db.ExecuteAsync(
+            """
+            INSERT INTO games(id, date, time, color, result, timeClass, tournament) VALUES
+              ('cc-game', '2026-05-01', '10:00:00', 'white', 'win', 'blitz', 'https://www.chess.com/tournament/live/12345');
+            """);
+
+        var keys = await new TournamentRepository(db.Connections).LoadTournamentKeysAsync();
+
+        Assert.Equal("https://www.chess.com/tournament/live/12345", keys["cc-game"]);
+    }
+
+    [Fact]
+    public async Task Tournament_keys_leave_out_normal_games()
+    {
+        using var db = new TempDatabase();
+        await db.Migrations.MigrateAsync();
+        await db.ExecuteAsync(
+            """
+            INSERT INTO games(id, date, time, color, result, timeClass, tournament) VALUES
+              ('normal', '2026-05-01', '10:00:00', 'white', 'win', 'blitz', NULL);
+            """);
+
+        var keys = await new TournamentRepository(db.Connections).LoadTournamentKeysAsync();
+
+        Assert.Empty(keys);
+    }
+
+    [Fact]
     public async Task Games_tournament_column_exists_and_is_nullable()
     {
         using var db = new TempDatabase();
