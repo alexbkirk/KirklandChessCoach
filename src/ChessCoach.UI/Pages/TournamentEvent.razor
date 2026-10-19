@@ -1,0 +1,166 @@
+@page "/tournament/event"
+@using System.Globalization
+@using ChessCoach.Core.Abstractions
+@using ChessCoach.Core.Domain
+@using ChessCoach.Core.Stats
+@using ChessCoach.UI.Components
+@inject ITournamentRepository Repository
+
+<PageTitle>@_title · ChessCoach</PageTitle>
+
+<a href="/tournament" class="focus-hide">Back to Tournament</a>
+
+<MudText Typo="Typo.h4" HtmlTag="h1" Class="page-title">@_title</MudText>
+@if (_summary is not null)
+{
+    <div class="page-subtitle">@DateRange(_summary) · @_summary.Games.Count.ToString("N0", CultureInfo.InvariantCulture) @(_summary.Games.Count == 1 ? "game" : "games")</div>
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+else if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_summary is null)
+{
+    <MudAlert Severity="Severity.Info">
+        Tournament not found. <a href="/tournament">Back to Tournament</a>
+    </MudAlert>
+}
+else
+{
+    var prep = _summary.Prep;
+
+    <div class="kpis mb-4">
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Games</MudText><MudText Typo="Typo.h5" HtmlTag="p">@prep.Games.ToString("N0", CultureInfo.InvariantCulture)</MudText></MudPaper>
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Record</MudText><MudText Typo="Typo.h5" HtmlTag="p">@RecordLabel(prep.Record)</MudText></MudPaper>
+        @foreach (var split in prep.ByColor)
+        {
+            <MudPaper Class="pa-3"><MudText Typo="Typo.caption">As @split.Label.ToLowerInvariant()</MudText><MudText Typo="Typo.h5" HtmlTag="p">@RecordLabel(split.Record)</MudText></MudPaper>
+        }
+        <MudPaper Class="pa-3"><MudText Typo="Typo.caption">Blunder rate</MudText><MudText Typo="Typo.h5" HtmlTag="p">@Percent(prep.BlunderRate * 100)</MudText></MudPaper>
+    </div>
+
+    <div class="stats-grid">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Openings</MudText>
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Opening</th><th class="text-right">Games</th><th class="text-right">Record</th></tr></thead>
+                <tbody>
+                    @foreach (var row in prep.Openings)
+                    {
+                        <tr><td>@row.Family</td><td class="text-right">@row.Record.Games</td><td class="text-right">@RecordLabel(row.Record)</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </div>
+
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Games</MudText>
+        <MudSimpleTable Dense="true">
+            <thead><tr><th>Round</th><th>Date</th><th>Colour</th><th>Opponent</th><th>Rating</th><th>Opening</th><th>Result</th><th>Game</th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < _summary.Games.Count; i++)
+                {
+                    var g = _summary.Games[i];
+                    <tr>
+                        <td>@(i + 1)</td>
+                        <td>@g.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
+                        <td>@Capitalize(g.Color)</td>
+                        <td>@g.Opponent</td>
+                        <td>@g.MyRating – @g.OppRating</td>
+                        <td>@g.Family</td>
+                        <td><MudChip T="string" Size="Size.Small" Color="@ResultColor(g.Result)">@g.Result</MudChip></td>
+                        <td>
+                            <GameReviewLink Id="@g.Id" Text="Review" />
+                            @if (!string.IsNullOrEmpty(g.Url))
+                            {
+                                <span> · </span>
+                                <a href="@g.Url" target="_blank" rel="noopener">View</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "key")] public string? Key { get; set; }
+
+    private TournamentSummary? _summary;
+    private string? _error;
+    private bool _loading;
+    private bool _started;
+    private string? _loadedKey;
+    private int _requests;
+
+    private string _title => _summary?.Name ?? "Tournament";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // only reload when the key in the address changes
+        if (_started && string.Equals(Key, _loadedKey, StringComparison.Ordinal)) return;
+        _started = true;
+        _loadedKey = Key;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        // a response that is no longer the newest request is dropped
+        var ticket = ++_requests;
+        _loading = true;
+        _error = null;
+        _summary = null;
+        try
+        {
+            if (string.IsNullOrEmpty(Key))
+            {
+                return;
+            }
+
+            var games = await Repository.LoadGamesAsync();
+            var keys = await Repository.LoadTournamentKeysAsync();
+            var moves = await Repository.LoadMoveSamplesAsync();
+            var groups = await Task.Run(() => TournamentGroups.Group(games, keys, moves));
+            if (ticket != _requests) return;
+            _summary = groups.FirstOrDefault(t => string.Equals(t.Key, Key, StringComparison.Ordinal));
+        }
+        catch (Exception ex)
+        {
+            if (ticket == _requests) _error = ex.Message;
+        }
+        finally
+        {
+            if (ticket == _requests) _loading = false;
+        }
+    }
+
+    private static Color ResultColor(string result) => result switch
+    {
+        "win" => Color.Success,
+        "loss" => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static string DateRange(TournamentSummary summary)
+    {
+        var start = summary.Start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        if (summary.Start == summary.End) return start;
+        return $"{start} to {summary.End.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+    }
+
+    private static string Capitalize(string value) =>
+        string.IsNullOrEmpty(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
+
+    private static string RecordLabel(Record record) =>
+        $"{record.Wins}–{record.Draws}–{record.Losses}";
+
+    private static string Percent(double value) => value.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+}

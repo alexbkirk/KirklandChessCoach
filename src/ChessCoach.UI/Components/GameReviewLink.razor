@@ -1,0 +1,7 @@
+<a href="/review/@Id">@Text</a>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = string.Empty;
+
+    [Parameter] public string Text { get; set; } = "Review";
+}

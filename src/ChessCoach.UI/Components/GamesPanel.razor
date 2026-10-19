@@ -28,7 +28,7 @@ else
                         <td>@g.Family</td>
                         <td><MudChip T="string" Size="Size.Small" Color="@ResultColor(g.Result)">@g.Result</MudChip></td>
                         <td>@g.Ending</td>
-                        <td><a href="review/@g.Id">review</a></td>
+                        <td><GameReviewLink Id="@g.Id" Text="review" /></td>
                         <td>@if (!string.IsNullOrEmpty(g.Url)) { <a href="@g.Url" target="_blank" rel="noopener">view</a> }</td>
                     </tr>
                 }

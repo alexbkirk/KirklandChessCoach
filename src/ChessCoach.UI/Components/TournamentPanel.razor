@@ -50,37 +50,30 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Recent games</MudText>
+            <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-2">Tournaments</MudText>
             <MudSimpleTable Dense="true">
-                <thead><tr><th>Date</th><th>Colour</th><th>Opponent</th><th>Result</th></tr></thead>
+                <thead><tr><th>Tournament</th><th>Dates</th><th class="text-right">Games</th><th class="text-right">Record</th><th>Type</th></tr></thead>
                 <tbody>
-                    @foreach (var g in _prep.Recent)
+                    @foreach (var t in _groups)
                     {
                         <tr>
-                            <td>@g.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
-                            <td>@g.Color</td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(g.Url))
-                                {
-                                    <a href="@g.Url" target="_blank" rel="noopener">@g.Opponent</a>
-                                }
-                                else
-                                {
-                                    @g.Opponent
-                                }
-                            </td>
-                            <td><MudChip T="string" Size="Size.Small" Color="@ResultColor(g.Result)">@g.Result</MudChip></td>
+                            <td><a href="tournament/event?key=@Uri.EscapeDataString(t.Key)">@t.Name</a></td>
+                            <td>@DatesLabel(t)</td>
+                            <td class="text-right">@t.Games.Count.ToString("N0", CultureInfo.InvariantCulture)</td>
+                            <td class="text-right">@RecordLabel(t.Prep.Record)</td>
+                            <td>@(t.OverTheBoard ? "Over the board" : "chess.com")</td>
                         </tr>
                     }
                 </tbody>
             </MudSimpleTable>
-            <MudText Typo="Typo.caption">The five newest of @_prep.Games.ToString("N0", CultureInfo.InvariantCulture) games. @_prep.OverTheBoard.ToString("N0", CultureInfo.InvariantCulture) of them over the board.</MudText>
+            <MudText Typo="Typo.caption">@_prep.OverTheBoard.ToString("N0", CultureInfo.InvariantCulture) of the @_prep.Games.ToString("N0", CultureInfo.InvariantCulture) games were over the board.</MudText>
         </MudPaper>
     </div>
 }
 
 @code {
     private TournamentPrep? _prep;
+    private IReadOnlyList<TournamentSummary> _groups = Array.Empty<TournamentSummary>();
     private string? _error;
     private int _requests;
 
@@ -94,9 +87,12 @@ else
         {
             var games = await Repository.LoadGamesAsync();
             var moves = await Repository.LoadMoveSamplesAsync();
-            var prep = await Task.Run(() => TournamentPrepCalculator.Compute(games, moves));
+            var keys = await Repository.LoadTournamentKeysAsync();
+            var (prep, groups) = await Task.Run(() =>
+                (TournamentPrepCalculator.Compute(games, moves), TournamentGroups.Group(games, keys, moves)));
             if (ticket != _requests) return;
             _prep = prep;
+            _groups = groups;
             _error = null;
         }
         catch (Exception ex)
@@ -107,18 +103,16 @@ else
 
     private async Task AddGameAsync()
     {
-        var dialog = await Dialogs.ShowAsync<AddTournamentGameDialog>("Add tournament game", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var dialog = await Dialogs.ShowAsync<AddTournamentGameDialog>("Add tournament game", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
         var result = await dialog.Result;
         if (result is null || result.Canceled) return;
         await LoadAsync();
     }
 
-    private static Color ResultColor(string result) => result switch
-    {
-        "win" => Color.Success,
-        "loss" => Color.Error,
-        _ => Color.Default,
-    };
+    private static string DatesLabel(TournamentSummary t) =>
+        t.Start == t.End
+            ? t.Start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : $"{t.Start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} to {t.End.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
 
     private static string RecordLabel(Record record) =>
         $"{record.Wins}–{record.Draws}–{record.Losses}";
