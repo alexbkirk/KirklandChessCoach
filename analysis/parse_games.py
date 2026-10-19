@@ -50,7 +50,7 @@ def parse_pgn_text(txt, me):
     for b in re.split(r'\n\n(?=\[Event )', txt.strip()):
         h = dict(re.findall(r'^\[(\w+) "(.*)"\]$', b, re.M))
         if "White" not in h: continue
-        if not (h.get("UTCDate") or h.get("Date")): continue   # no date: the app cannot place the game
+        if not re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", h.get("UTCDate") or h.get("Date") or ""): continue   # no real date (missing or "????.??.??"): the app cannot place the game
         if h.get("Variant") and h["Variant"] != "Chess": continue   # skip Chess960 etc.
         moves = b.split("\n\n", 1)[1].strip() if "\n\n" in b else ""
         white = h["White"].lower() == me

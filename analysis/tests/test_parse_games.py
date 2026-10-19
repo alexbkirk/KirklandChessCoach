@@ -64,6 +64,9 @@ class UnreadableHeaders(unittest.TestCase):
     def test_a_game_with_no_date_is_skipped_not_a_crash(self):
         self.assertEqual(parse_pgn_text(self._pgn('[WhiteElo "1500"]'), "me"), [])
 
+    def test_a_placeholder_date_is_skipped(self):
+        self.assertEqual(parse_pgn_text(self._pgn('[Date "????.??.??"]'), "me"), [])
+
 
 if __name__ == "__main__":
     unittest.main()
