@@ -103,7 +103,7 @@ else
 
     private async Task AddGameAsync()
     {
-        var dialog = await Dialogs.ShowAsync<AddTournamentGameDialog>("Add tournament game", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var dialog = await Dialogs.ShowAsync<AddTournamentGameDialog>("Add tournament game", new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseOnEscapeKey = true });
         var result = await dialog.Result;
         if (result is null || result.Canceled) return;
         await LoadAsync();

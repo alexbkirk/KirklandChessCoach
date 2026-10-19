@@ -13,7 +13,7 @@
 <MudText Typo="Typo.h4" HtmlTag="h1" Class="page-title">@_title</MudText>
 @if (_summary is not null)
 {
-    <div class="page-subtitle">@DateRange(_summary) · @_summary.Games.Count.ToString("N0", CultureInfo.InvariantCulture) games</div>
+    <div class="page-subtitle">@DateRange(_summary) · @_summary.Games.Count.ToString("N0", CultureInfo.InvariantCulture) @(_summary.Games.Count == 1 ? "game" : "games")</div>
 }
 
 @if (_error is not null)

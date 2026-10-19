@@ -32,7 +32,7 @@
             }
             else if (_sanCount is not null)
             {
-                <MudText Typo="Typo.caption">@_sanCount moves read</MudText>
+                <MudText Typo="Typo.caption">@(_sanCount == 1 ? "1 half-move" : $"{_sanCount} half-moves") read ({(_sanCount + 1) / 2} full)</MudText>
             }
         </MudStack>
     </DialogContent>
