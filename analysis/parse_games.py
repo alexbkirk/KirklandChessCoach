@@ -14,6 +14,14 @@ def family(name):
     return " ".join(w[:2])
 
 
+def to_int(text):
+    """A rating from a header; 0 when it is missing or not a number (for example "-" or "?")."""
+    try:
+        return int(text or 0)
+    except ValueError:
+        return 0
+
+
 def tclass(tc):
     if "/" in tc: return "daily"
     m = re.match(r'(\d+)(?:\+(\d+))?', tc)
@@ -42,6 +50,7 @@ def parse_pgn_text(txt, me):
     for b in re.split(r'\n\n(?=\[Event )', txt.strip()):
         h = dict(re.findall(r'^\[(\w+) "(.*)"\]$', b, re.M))
         if "White" not in h: continue
+        if not (h.get("UTCDate") or h.get("Date")): continue   # no date: the app cannot place the game
         if h.get("Variant") and h["Variant"] != "Chess": continue   # skip Chess960 etc.
         moves = b.split("\n\n", 1)[1].strip() if "\n\n" in b else ""
         white = h["White"].lower() == me
@@ -52,11 +61,11 @@ def parse_pgn_text(txt, me):
         clean = re.sub(r'\s+', ' ', re.sub(r'\{[^}]*\}|\d+\.\.\.', '', moves)).strip()
         games.append(dict(
             id=h.get("Link", "").rstrip("/").rsplit("/", 1)[-1], url=h.get("Link", ""),
-            date=h.get("UTCDate", h["Date"]).replace(".", "-"), time=h.get("UTCTime", ""),
+            date=(h.get("UTCDate") or h["Date"]).replace(".", "-"), time=h.get("UTCTime", ""),
             color="white" if white else "black", result=res, ending=ending(h.get("Termination", "")),
             timeControl=h.get("TimeControl", ""), timeClass=tclass(h.get("TimeControl", "")),
-            myRating=int(h.get("WhiteElo" if white else "BlackElo", 0) or 0),
-            oppRating=int(h.get("BlackElo" if white else "WhiteElo", 0) or 0),
+            myRating=to_int(h.get("WhiteElo" if white else "BlackElo")),
+            oppRating=to_int(h.get("BlackElo" if white else "WhiteElo")),
             opponent=h["Black" if white else "White"], eco=h.get("ECO", ""),
             opening=name, family=family(name), plies=len(re.findall(r'\d+\.', clean)) * 2,
             tournament=h.get('Tournament') or None,
