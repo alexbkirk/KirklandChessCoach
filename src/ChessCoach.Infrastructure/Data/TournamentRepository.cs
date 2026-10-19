@@ -63,6 +63,20 @@ public sealed class TournamentRepository(SqliteConnectionFactory connections) : 
             Clock: r.Clock)).ToList();
     }
 
+    public async Task<IReadOnlyDictionary<string, string>> LoadTournamentKeysAsync(CancellationToken cancellationToken = default)
+    {
+        await using var connection = await connections.OpenAsync(cancellationToken);
+        var rows = await connection.QueryAsync<TournamentKeyRow>(new CommandDefinition(
+            """
+            SELECT CAST(id AS TEXT) AS GameId, CAST(tournament AS TEXT) AS Tournament
+            FROM games
+            WHERE tournament IS NOT NULL
+            """,
+            cancellationToken: cancellationToken));
+
+        return rows.ToDictionary(r => r.GameId, r => r.Tournament ?? "");
+    }
+
     public async Task AddManualGameAsync(ManualGame game, CancellationToken cancellationToken = default)
     {
         await using var connection = await connections.OpenAsync(cancellationToken);
@@ -71,7 +85,7 @@ public sealed class TournamentRepository(SqliteConnectionFactory connections) : 
             INSERT OR IGNORE INTO games(id, url, date, time, color, result, ending, timeControl, timeClass,
                                         myRating, oppRating, opponent, eco, opening, family, plies, moves, pgn, tournament)
             VALUES (@Id, '', @Date, '00:00:00', @Color, @Result, 'other', '-', 'tournament',
-                    @MyRating, @OppRating, @Opponent, '', 'Unknown', 'Unknown', @Plies, @Moves, @Pgn, 'over-the-board')
+                    @MyRating, @OppRating, @Opponent, '', 'Unknown', 'Unknown', @Plies, @Moves, @Pgn, @Tournament)
             """,
             new
             {
@@ -85,8 +99,16 @@ public sealed class TournamentRepository(SqliteConnectionFactory connections) : 
                 Plies = game.Sans.Count,
                 Moves = game.Moves,
                 Pgn = game.Pgn,
+                Tournament = "otb:" + game.Event.Trim(),
             },
             cancellationToken: cancellationToken));
+    }
+
+    private sealed class TournamentKeyRow
+    {
+        public string GameId { get; set; } = "";
+
+        public string? Tournament { get; set; }
     }
 
     private sealed class MoveRow
