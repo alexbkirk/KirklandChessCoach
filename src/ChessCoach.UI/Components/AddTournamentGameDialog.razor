@@ -22,6 +22,10 @@
                 <MudSelectItem T="string" Value="@("loss")">Loss</MudSelectItem>
             </MudSelect>
             <MudTextField T="string" Label="Moves" Lines="6" Variant="Variant.Outlined" Value="_moves" ValueChanged="OnMovesChangedAsync" Immediate="true" HelperText="Paste the moves in standard notation, with or without move numbers." />
+            @if (_saveError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_saveError</MudAlert>
+            }
             @if (_parseError is not null)
             {
                 <MudAlert Severity="Severity.Error" Dense="true">@_parseError</MudAlert>
@@ -54,15 +58,20 @@
     private string? _parseError;
     private int _parseTicket;
 
-    private bool CanSave => _sans is { Length: > 0 } && _parseError is null && !string.IsNullOrWhiteSpace(_opponent);
+    private bool _parsing;
+    private string? _saveError;
+
+    private bool CanSave => !_parsing && _sans is { Length: > 0 } && _parseError is null && !string.IsNullOrWhiteSpace(_opponent);
 
     private async Task OnMovesChangedAsync(string value)
     {
         _moves = value;
         var ticket = ++_parseTicket;
+        _parsing = true;
         var parsed = await Rules.ParseMovesAsync(value);
         if (ticket != _parseTicket) return;
 
+        _parsing = false;
         _sans = parsed.Sans;
         _sanCount = parsed.Sans.Length;
         _parseError = parsed.Error is null
@@ -84,7 +93,14 @@
             _result,
             _event.Trim(),
             _sans!);
-        await Repository.AddManualGameAsync(game);
-        MudDialog.Close(DialogResult.Ok(true));
+        try
+        {
+            await Repository.AddManualGameAsync(game);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"The game could not be saved: {ex.Message}";
+        }
     }
 }

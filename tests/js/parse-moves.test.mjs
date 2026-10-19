@@ -39,3 +39,9 @@ test("accepts a game written across several lines", () => {
         error: null,
     });
 });
+
+test("castling written with zeros is read as castling", () => {
+    const result = parseMoves("1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. 0-0 Nf6 5. d3 0-0");
+    assert.equal(result.error, null);
+    assert.deepEqual(result.sans.filter((s) => s.startsWith("O")), ["O-O", "O-O"]);
+});

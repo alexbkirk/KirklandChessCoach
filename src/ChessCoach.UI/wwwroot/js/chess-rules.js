@@ -56,7 +56,7 @@ export function parseMoves(text) {
     const tokens = [];
     for (const raw of cleaned.split(/\s+/)) {
         if (!raw || RESULT_TOKENS.has(raw) || /^\$\d+$/.test(raw)) continue;
-        const token = raw.replace(/^\d+\.+/, "").replace(/[!?]+$/, "");
+        const token = raw.replace(/^\d+\.+/, "").replace(/[!?]+$/, "").replace(/^0-0-0(?=[+#]?$)/, "O-O-O").replace(/^0-0(?=[+#]?$)/, "O-O");
         if (token && !RESULT_TOKENS.has(token)) tokens.push(token);
     }
     const chess = new Chess();
