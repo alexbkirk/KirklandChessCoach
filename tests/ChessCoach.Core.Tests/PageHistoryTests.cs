@@ -219,4 +219,20 @@ public sealed class QueryChoiceTests
     {
         Assert.Equal(expected, QueryChoice.Color(raw));
     }
+
+    [Theory]
+    [InlineData("100", 100)]
+    [InlineData("120", 100)]
+    [InlineData("50", 50)]
+    [InlineData("49", 50)]
+    [InlineData("0", 50)]
+    [InlineData("-100", 50)]
+    [InlineData("abc", 50)]
+    [InlineData(null, 50)]
+    [InlineData("99999999999", 50)]
+    [InlineData("100000", 5000)]
+    public void A_shown_count_in_the_address_is_whole_pages_within_limits(string? raw, int expected)
+    {
+        Assert.Equal(expected, QueryChoice.Count(raw, 50, 5000));
+    }
 }

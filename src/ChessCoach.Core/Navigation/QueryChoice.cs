@@ -14,4 +14,11 @@ public static class QueryChoice
 
     /// <summary>"white" or "black" as written in the address; anything else means both colours (null).</summary>
     public static string? Color(string? raw) => raw is "white" or "black" ? raw : null;
+
+    /// <summary>
+    /// How many rows a "Show more" list shows: the whole number in the address, rounded down to a whole page and kept between one page and
+    /// <paramref name="max"/>; anything else means one page.
+    /// </summary>
+    public static int Count(string? raw, int page, int max) =>
+        int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var count) && count >= page ? Math.Min(count, max) / page * page : page;
 }
