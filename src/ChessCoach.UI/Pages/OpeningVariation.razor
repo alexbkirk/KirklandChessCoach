@@ -125,7 +125,7 @@ else
                                     <td>@TallyText(spot)</td>
                                     <td class="text-nowrap">
                                         <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => StartPractice(index)">Practice</MudButton>
-                                        <a href="@spot.ExampleUrl" target="_blank" rel="noopener" class="ml-2">game</a>
+                                        <a href="@spot.ExampleUrl" target="_blank" rel="noopener" class="ml-2">game</a> <GameReviewLink Url="@spot.ExampleUrl" Text="review" />
                                     </td>
                                 </tr>
                             }
@@ -149,7 +149,7 @@ else
                         <Finished Context="result">
                             <div class="d-flex gap-2 align-center">
                                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextAsync">Next position</MudButton>
-                                <a href="@spot.ExampleUrl" target="_blank" rel="noopener">view game</a>
+                                <a href="@spot.ExampleUrl" target="_blank" rel="noopener">view game</a> · <GameReviewLink Url="@spot.ExampleUrl" Text="review game" />
                             </div>
                         </Finished>
                     </PracticePosition>

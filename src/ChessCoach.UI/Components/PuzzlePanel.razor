@@ -27,7 +27,7 @@ else
     var puzzle = _set[_index];
     <MudText Typo="Typo.body2" Class="mb-2">
         @(puzzle.Color == "white" ? "White" : "Black") to move · @puzzle.Date vs <a href="@OpponentLinks.For(puzzle.Opponent)">@puzzle.Opponent</a> ·
-        <a href="@puzzle.Url" target="_blank" rel="noopener">view game</a>
+        <a href="@puzzle.Url" target="_blank" rel="noopener">view game</a> · <GameReviewLink Id="@puzzle.GameId" Text="review game" />
     </MudText>
 
     <PracticePosition @key="@puzzle.PositionId" Fen="@puzzle.Fen" Side="@puzzle.Color" Accept="@puzzle.Accept" BestUci="@puzzle.BestUci" BestSan="@puzzle.Note.BetterSan"

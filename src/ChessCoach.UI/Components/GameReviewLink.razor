@@ -1,7 +1,16 @@
-<a href="/review/@Id">@Text</a>
+@if (ReviewId.Length > 0)
+{
+    <a href="/review/@ReviewId">@Text</a>
+}
 
 @code {
-    [Parameter, EditorRequired] public string Id { get; set; } = string.Empty;
+    /// <summary>The game's id, when the caller has it.</summary>
+    [Parameter] public string Id { get; set; } = "";
+
+    /// <summary>A chess.com game address; its last part is the game id. Used when the caller has only the address.</summary>
+    [Parameter] public string Url { get; set; } = "";
 
     [Parameter] public string Text { get; set; } = "Review";
+
+    private string ReviewId => !string.IsNullOrEmpty(Id) ? Id : Url.TrimEnd('/')[(Url.TrimEnd('/').LastIndexOf('/') + 1)..];
 }
